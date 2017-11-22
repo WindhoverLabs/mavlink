@@ -62,7 +62,7 @@ typedef struct
     CFE_TBL_Handle_t  ConfigTblHdl;
 
     /** \brief Config Table Pointer */
-    MAVLINK_ConfigTblEntry_t*  ConfigTblPtr;
+    MAVLINK_ParamTblEntry_t*  ConfigTblPtr;
 
     /* Critical Data Storage (CDS) table-related */
 

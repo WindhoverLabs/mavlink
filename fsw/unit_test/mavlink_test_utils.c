@@ -19,7 +19,7 @@
 /*
  * Config table for testing
  */
-MAVLINK_ConfigTblEntry_t MAVLINK_configtable = {
+MAVLINK_ParamTblEntry_t MAVLINK_configtable = {
         1 /* iParam*/
 };
 
@@ -42,7 +42,7 @@ void MAVLINK_Test_Setup(void)
     Ut_OSAPI_Reset();
     Ut_OSFILEAPI_Reset();
 
-    Ut_CFE_TBL_AddTable(MAVLINK_CONFIG_TABLE_FILENAME, (void *) &MAVLINK_configtable);
+    Ut_CFE_TBL_AddTable(MAVLINK_PARAM_TABLE_FILENAME, (void *) &MAVLINK_configtable);
 }
 
 void MAVLINK_Test_TearDown(void) {

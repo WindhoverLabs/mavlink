@@ -63,7 +63,7 @@ int32 MAVLINK_InitEvent()
     MAVLINK_AppData.EventTbl[  ind].EventID = MAVLINK_INF_EID;
     MAVLINK_AppData.EventTbl[ind++].Mask    = CFE_EVS_NO_FILTER;
 
-    MAVLINK_AppData.EventTbl[  ind].EventID = MAVLINK_CONFIG_TABLE_ERR_EID;
+    MAVLINK_AppData.EventTbl[  ind].EventID = MAVLINK_PARAM_TABLE_ERR_EID;
     MAVLINK_AppData.EventTbl[ind++].Mask    = CFE_EVS_NO_FILTER;
 
     MAVLINK_AppData.EventTbl[  ind].EventID = MAVLINK_CDS_ERR_EID;

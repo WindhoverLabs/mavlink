@@ -122,7 +122,7 @@ typedef enum {
 **  had an error with the configuration table.
 **
 */
-    MAVLINK_CONFIG_TABLE_ERR_EID,
+    MAVLINK_PARAM_TABLE_ERR_EID,
 
 /** \brief <tt> 'MAVLINK - ' </tt>
 **  \event <tt> 'MAVLINK - ' </tt>

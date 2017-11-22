@@ -50,8 +50,8 @@ int32 MAVLINK_InitConfigTbl()
 
     /* Register Config table */
     iStatus = CFE_TBL_Register(&MAVLINK_AppData.ConfigTblHdl,
-                               MAVLINK_CONFIG_TABLENAME,
-                               (sizeof(MAVLINK_ConfigTblEntry_t) * MAVLINK_CONFIG_TABLE_MAX_ENTRIES),
+                               MAVLINK_PARAM_TABLENAME,
+                               (sizeof(MAVLINK_ParamTblEntry_t) * MAVLINK_PARAM_TABLE_MAX_ENTRIES),
                                CFE_TBL_OPT_DEFAULT,
                                MAVLINK_ValidateConfigTbl);
     if (iStatus != CFE_SUCCESS)
@@ -67,7 +67,7 @@ int32 MAVLINK_InitConfigTbl()
     /* Load Config table file */
     iStatus = CFE_TBL_Load(MAVLINK_AppData.ConfigTblHdl,
                            CFE_TBL_SRC_FILE,
-                           MAVLINK_CONFIG_TABLE_FILENAME);
+                           MAVLINK_PARAM_TABLE_FILENAME);
     if (iStatus != CFE_SUCCESS)
     {
         /* Note, CFE_SUCCESS is for a successful full table load.  If a partial table
@@ -94,7 +94,7 @@ MAVLINK_InitConfigTbl_Exit_Tag:
 int32 MAVLINK_ValidateConfigTbl(void* ConfigTblPtr)
 {
     int32  iStatus=0;
-    MAVLINK_ConfigTblEntry_t* MAVLINK_ConfigTblPtr = (MAVLINK_ConfigTblEntry_t*)(ConfigTblPtr);
+    MAVLINK_ParamTblEntry_t* MAVLINK_ConfigTblPtr = (MAVLINK_ParamTblEntry_t*)(ConfigTblPtr);
 
     if (ConfigTblPtr == NULL)
     {
@@ -106,7 +106,7 @@ int32 MAVLINK_ValidateConfigTbl(void* ConfigTblPtr)
     **
     ** Examples:
     ** if (MAVLINK_ConfigTblPtr->iParam <= 16) {
-    **   (void) CFE_EVS_SendEvent(MAVLINK_CONFIG_TABLE_INF_EID, CFE_EVS_ERROR,
+    **   (void) CFE_EVS_SendEvent(MAVLINK_PARAM_TABLE_INF_EID, CFE_EVS_ERROR,
      *                         "Invalid value for Config parameter sParam (%d)",
     **                         MAVLINK_ConfigTblPtr->iParam);
     ** }
@@ -157,7 +157,7 @@ int32 MAVLINK_AcquireConfigPointers(void)
     iStatus = CFE_TBL_Manage(MAVLINK_AppData.ConfigTblHdl);
     if ((iStatus != CFE_SUCCESS) && (iStatus != CFE_TBL_INFO_UPDATED))
     {
-        (void) CFE_EVS_SendEvent(MAVLINK_CONFIG_TABLE_ERR_EID, CFE_EVS_ERROR,
+        (void) CFE_EVS_SendEvent(MAVLINK_PARAM_TABLE_ERR_EID, CFE_EVS_ERROR,
                                  "Failed to manage Config table (0x%08X)",
                                  (unsigned int)iStatus);
         goto MAVLINK_AcquireConfigPointers_Exit_Tag;
@@ -176,7 +176,7 @@ int32 MAVLINK_AcquireConfigPointers(void)
     else if(iStatus != CFE_SUCCESS)
     {
 	MAVLINK_AppData.ConfigTblPtr = 0;
-        (void) CFE_EVS_SendEvent(MAVLINK_CONFIG_TABLE_ERR_EID, CFE_EVS_ERROR,
+        (void) CFE_EVS_SendEvent(MAVLINK_PARAM_TABLE_ERR_EID, CFE_EVS_ERROR,
                                  "Failed to get Config table's address (0x%08X)",
                                  (unsigned int)iStatus);
     }

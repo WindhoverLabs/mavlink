@@ -10,6 +10,7 @@
 ** Includes
 *************************************************************************/
 #include "cfe.h"
+#include "mavlink_platform_cfg.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,12 +22,12 @@ extern "C" {
 /**
  * \brief Defines the number of entries in the table
  */
-#define MAVLINK_CONFIG_TABLE_MAX_ENTRIES  (1)
+#define MAVLINK_PARAM_TABLE_MAX_ENTRIES  (10)
 
 /**
  * \brief Defines the table identification name used for table registration.
  */
-#define MAVLINK_CONFIG_TABLENAME          ("CONFIG_TBL")
+#define MAVLINK_PARAM_TABLENAME          ("PARAM_TBL")
 
 /**
  * \brief Defines the table file name used for table registration.
@@ -40,33 +41,16 @@ extern "C" {
 /** \brief Definition for a single config table entry */
 typedef struct
 {
-    int32  iParam;
+	char    param_name[MAVLINK_MSG_PARAM_NAME_LEN];
+    float   param;
+} MAVLINK_ParamData_t;
 
-    /* TODO:  Add type declaration for config parameters here.
-    **
-    ** Examples:
-    **    int8/char            cParam;
-    **    int8/char            cParams[16];
-    **    uint8/unsigned char  ucParam;
-    **    uint8/unsigned char  ucParams[16];
-    **
-    **    int16   sParam;
-    **    int16   sParams[8];
-    **    uint16  usParam;
-    **    uint16  usParams[8];
-    **
-    **    int32   iParam;
-    **    int32   iParams[5];
-    **    uint32  uiParam;
-    **    uint32  uiParams[5];
-    **
-    **    float  fParam;
-    **    float  fParams[3];
-    **
-    **    double  dParam;
-    **    double  dParams[3];
-    */
-} MAVLINK_ConfigTblEntry_t;
+/** \brief Definition for a single config table entry */
+typedef struct
+{
+    uint8                   tableID;
+    MAVLINK_ParamData_t     params[MAVLINK_PARAM_TABLE_MAX_ENTRIES];
+} MAVLINK_ParamTblEntry_t;
 
 
 /** \brief Definition for Critical Data Storage (CDS) table entry */
