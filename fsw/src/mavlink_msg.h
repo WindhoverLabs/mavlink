@@ -147,6 +147,44 @@ typedef struct
 
 } MAVLINK_HkTlm_t;
 
+/**
+**  \brief Mavlink version 1 packet
+*/
+typedef struct
+{
+	uint8 magic;               ///< protocol magic marker
+	uint8 len;                 ///< Length of payload
+	uint8 seq;                 ///< Sequence of packet
+	uint8 sysid;               ///< ID of message sender system/aircraft
+	uint8 compid;              ///< ID of the message sender component
+	uint8 msgid;               ///< ID of message in payload
+	uint8 payload[255];    ///< A maximum of 255 payload bytes
+	uint16 checksum;           ///< X.25 CRC
+
+} MAVLINK_MavPktV1_t;
+
+/**
+**  \brief Mavlink version 2 packet
+*/
+typedef struct
+{
+	uint8 magic;              ///< protocol magic marker
+	uint8 len;                ///< Length of payload
+	uint8 incompat_flags;     ///< flags that must be understood
+	uint8 compat_flags;       ///< flags that can be ignored if not understood
+	uint8 seq;                ///< Sequence of packet
+	uint8 sysid;              ///< ID of message sender system/aircraft
+	uint8 compid;             ///< ID of the message sender component
+	//uint8 msgid 0:7;          ///< first 8 bits of the ID of the message
+	//uint8 msgid 8:15;         ///< middle 8 bits of the ID of the message
+	//uint8 msgid 16:23;        ///< last 8 bits of the ID of the message
+	uint8 target_sysid;       ///< Optional field for point-to-point messages, used for payload else
+	uint8 target_compid;      ///< Optional field for point-to-point messages, used for payload else
+	uint8 payload[253];   ///< A maximum of 253 payload bytes
+	uint16 checksum;          ///< X.25 CRC
+	uint8 signature[13];      ///< Signature which allows ensuring that the link is tamper-proof
+
+} MAVLINK_MavPktV2_t;
 
 #ifdef __cplusplus
 }
