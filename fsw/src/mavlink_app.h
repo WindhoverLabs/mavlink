@@ -21,6 +21,7 @@
 #include "mavlink_events.h"
 #include "mavlink_config_utils.h"
 #include "mavlink_cds_utils.h"
+#include "mavlink_custom.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,6 +31,12 @@ extern "C" {
 ** Local Defines
 *************************************************************************/
 #define MAVLINK_TIMEOUT_MSEC             	(1000)
+#define MAVLINK_MAX_CMD_INGEST           			(CFE_SB_MAX_SB_MSG_SIZE)
+#define MAVLINK_LISTENER_TASK_NAME  				"MAVLINK_LISTENER"
+#define MAVLINK_LISTENER_TASK_STACK_SIZE			16000
+#define MAVLINK_LISTENER_TASK_PRIORITY				100
+#define MAVLINK_CFG_TBL_MUTEX_NAME 					"MAVLINK_CFG_TBL_MUTEX"
+#define MAVLINK_TIME_TBL_MUTEX_NAME 				"MAVLINK_TIME_TBL_MUTEX"
 
 /************************************************************************
 ** Local Structure Definitions
@@ -71,6 +78,15 @@ typedef struct
 
     /** \brief CDS Table data */
     MAVLINK_CdsTbl_t  CdsTbl;
+
+    /** \brief Mavlink cmd ingest flag */
+    boolean IngestActive;
+
+    /** \brief Buffer for child task cmd ingest */
+    uint8           IngestBuffer[MAVLINK_MAX_CMD_INGEST];
+
+    /** \brief ID of listener child task */
+	uint32          ListenerTaskID;
 
     /* Inputs/Outputs */
 
@@ -306,6 +322,10 @@ void  MAVLINK_SendOutData(void);
 **
 *************************************************************************/
 boolean  MAVLINK_VerifyCmdLength(CFE_SB_Msg_t* MsgPtr, uint16 usExpectedLen);
+
+int32 MAVLINK_InitChildTasks(void);
+void MAVLINK_ListenerTaskMain(void);
+void MAVLINK_CleanupCallback();
 
 #ifdef __cplusplus
 }

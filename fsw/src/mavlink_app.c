@@ -212,6 +212,8 @@ int32 MAVLINK_InitData()
 }
 
 
+
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                 */
 /* MAVLINK initialization                                              */
@@ -270,6 +272,32 @@ int32 MAVLINK_InitApp()
         goto MAVLINK_InitApp_Exit_Tag;
     }
 
+    /* Initialize custom code. */
+	iStatus = MAVLINK_InitCustom();
+	if(iStatus != CFE_SUCCESS)
+	{
+		CFE_ES_WriteToSysLog("MAVLINK - InitCustom failed (%i)\n", (int)iStatus);
+		goto MAVLINK_InitApp_Exit_Tag;
+	}
+
+    /* Register the cleanup callback */
+    iStatus = OS_TaskInstallDeleteHandler(&MAVLINK_CleanupCallback);
+    if (iStatus != CFE_SUCCESS)
+    {
+        (void) CFE_EVS_SendEvent(MAVLINK_INIT_ERR_EID, CFE_EVS_ERROR,
+                                 "Failed to init register cleanup callback (0x%08X)",
+                                 (unsigned int)iStatus);
+        goto MAVLINK_InitApp_Exit_Tag;
+    }
+
+    /* Initialize listener child task. */
+    iStatus = MAVLINK_InitChildTasks();
+    if(iStatus != CFE_SUCCESS)
+    {
+        CFE_ES_WriteToSysLog("MAVLINK - Failed to initialize child tasks (0x%08X)\n", (unsigned int)iStatus);
+        goto MAVLINK_InitApp_Exit_Tag;
+    }
+
 MAVLINK_InitApp_Exit_Tag:
     if (iStatus == CFE_SUCCESS)
     {
@@ -295,6 +323,107 @@ MAVLINK_InitApp_Exit_Tag:
     return (iStatus);
 }
 
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* MAVLINK Cleanup                                                 */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+void MAVLINK_CleanupCallback()
+{
+	MAVLINK_CleanupCustom();
+	MAVLINK_AppData.IngestActive = FALSE;
+	//OS_MutSemGive(MAVLINK_AppData.ConfigTblMutex);
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Spawn Child Task				                                   */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+int32 MAVLINK_InitChildTasks(void)
+{
+    int32 Status = CFE_SUCCESS;
+
+    MAVLINK_AppData.IngestActive = TRUE;
+
+	Status= CFE_ES_CreateChildTask(&MAVLINK_AppData.ListenerTaskID,
+								   MAVLINK_LISTENER_TASK_NAME,
+								   MAVLINK_ListenerTaskMain,
+								   NULL,
+								   MAVLINK_LISTENER_TASK_STACK_SIZE,
+								   MAVLINK_LISTENER_TASK_PRIORITY,
+								   0);
+
+	if (Status != CFE_SUCCESS)
+	{
+		goto MAVLINK_InitListenerTask_Exit_Tag;
+	}
+
+//	Status= CFE_ES_CreateChildTask(&MAVLINK_AppData.SerialListenerTaskID,
+//									MAVLINK_SERIAL_LISTENER_TASK_NAME,
+//									MAVLINK_SerializedListenerTaskMain,
+//									NULL,
+//									MAVLINK_SERIAL_LISTENER_TASK_STACK_SIZE,
+//									MAVLINK_SERIAL_LISTENER_TASK_PRIORITY,
+//									0);
+//
+//	if (Status != CFE_SUCCESS)
+//	{
+//		goto MAVLINK_InitListenerTask_Exit_Tag;
+//	}
+
+MAVLINK_InitListenerTask_Exit_Tag:
+	if (Status != CFE_SUCCESS)
+	{
+		CFE_EVS_SendEvent (MAVLINK_LISTENER_CREATE_CHDTASK_ERR_EID,
+						   CFE_EVS_ERROR,
+						   "Listener child task failed.  CFE_ES_CreateChildTask returned: 0x%08lX",
+						   Status);
+	}
+
+    return Status;
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Child Task Listener Main		                                   */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+void MAVLINK_ListenerTaskMain(void)
+{
+    int32 			Status = -1;
+    uint32  		MsgSize = 0;
+    MAVLINK_MavPktV1_t msg = {0};
+
+	Status = CFE_ES_RegisterChildTask();
+	if (Status == CFE_SUCCESS)
+	{
+		/* Ingest Loop */
+		do{
+			//OS_printf("In MAVLINK ingest loop\n");
+			/* Receive cmd and gather data on it */
+			//MsgSize = MAVLINK_MAX_CMD_INGEST;
+			MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &msg);
+			//CmdMsgPtr = (CFE_SB_MsgPtr_t)MAVLINK_AppData.IngestBuffer;
+			/* Process the cmd */
+			//MAVLINK_ProcessIngestCmd(CmdMsgPtr, MsgSize);
+
+			/* Wait before next iteration */
+			OS_TaskDelay(100);
+		}while(MAVLINK_AppData.IngestActive == TRUE);
+
+		CFE_ES_ExitChildTask();
+	}
+	else
+	{
+		/* Can't send event or write to syslog because this task isn't registered with the cFE. */
+		OS_printf("MAVLINK Listener Child Task Registration failed!\n");
+	}
+}
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                 */

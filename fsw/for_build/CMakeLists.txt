@@ -23,20 +23,21 @@ add_airliner_app_def(mavlink
     DESIGN_DOCS   ${CMAKE_CURRENT_SOURCE_DIR}/detail_doxy.in   
 )
 
-add_airliner_app_unit_test(MAVLINK-UT
-    UTASSERT
-    SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/../unit_test/mavlink_app_test.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/../unit_test/mavlink_cds_tbl_test.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/../unit_test/mavlink_cmds_test.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/../unit_test/mavlink_config_tbl_test.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/../unit_test/mavlink_testrunner.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/../unit_test/mavlink_test_utils.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/mavlink_app.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/mavlink_cds_utils.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/mavlink_config_utils.c
-        
-    INCLUDES
-        ${CMAKE_CURRENT_SOURCE_DIR}/../src/
-        ${CMAKE_CURRENT_SOURCE_DIR}/../unit_test/
-)
+#add_airliner_app_unit_test(MAVLINK-UT
+#    UTASSERT
+#    SOURCES
+#        ${CMAKE_CURRENT_SOURCE_DIR}/../unit_test/mavlink_app_test.c
+#        ${CMAKE_CURRENT_SOURCE_DIR}/../unit_test/mavlink_cds_tbl_test.c
+#        ${CMAKE_CURRENT_SOURCE_DIR}/../unit_test/mavlink_cmds_test.c
+#        ${CMAKE_CURRENT_SOURCE_DIR}/../unit_test/mavlink_config_tbl_test.c
+#        ${CMAKE_CURRENT_SOURCE_DIR}/../unit_test/mavlink_testrunner.c
+#        ${CMAKE_CURRENT_SOURCE_DIR}/../unit_test/mavlink_test_utils.c
+#        ${CMAKE_CURRENT_SOURCE_DIR}/../src/mavlink_app.c
+#        ${CMAKE_CURRENT_SOURCE_DIR}/../src/mavlink_cds_utils.c
+#        ${CMAKE_CURRENT_SOURCE_DIR}/../src/mavlink_config_utils.c
+#        ${CMAKE_CURRENT_SOURCE_DIR}/../src/mavlink_custom.h
+#        
+#    INCLUDES
+#        ${CMAKE_CURRENT_SOURCE_DIR}/../src/
+#        ${CMAKE_CURRENT_SOURCE_DIR}/../unit_test/
+#)

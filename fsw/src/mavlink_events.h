@@ -189,6 +189,14 @@ typedef enum {
 */
     MAVLINK_MSGLEN_ERR_EID,
 
+	// TODO
+	MAVLINK_SOCKET_ERR_EID,
+
+	//TODO
+	MAVLINK_ENA_INF_EID,
+
+	MAVLINK_LISTENER_CREATE_CHDTASK_ERR_EID,
+
 
 /** \brief <tt> This is a count of all the app events and should not be used. </tt> */
     MAVLINK_EVT_CNT
