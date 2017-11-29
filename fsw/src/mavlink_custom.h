@@ -38,7 +38,7 @@
 
 int32 MAVLINK_InitCustom(void);
 int32 MAVLINK_ReadMessage(char* buffer, uint32* size);
-int32 MAVLINK_SendMessage(char* buffer, uint32* size);
+int32 MAVLINK_SendMessage(const char* buffer, uint32 size);
 int32 MAVLINK_CleanupCustom(void);
 
 #endif

@@ -387,6 +387,28 @@ MAVLINK_InitListenerTask_Exit_Tag:
     return Status;
 }
 
+void printMsg(MAVLINK_MavPktV1_t *msg)
+{
+    OS_printf("magic = %i\n", msg->magic );
+    OS_printf("len = %i\n", msg->len );
+    OS_printf("seq = %i\n", msg->seq );
+    OS_printf("sysid = %i\n", msg->sysid );
+    OS_printf("compid = %i\n", msg->compid );
+    OS_printf("msgid = %i\n", msg->msgid );
+    //OS_printf("payload = %i", msg-> );
+    OS_printf("checksum = %i\n\n", msg->checksum );
+}
+
+void printHrt(Heartbeat_t *msg)
+{
+    OS_printf("type = %i\n", msg->type );
+    OS_printf("autopilot = %i\n", msg->autopilot );
+    OS_printf("base_mode = %i\n", msg->base_mode );
+    OS_printf("custom_mode = %i\n", msg->custom_mode );
+    OS_printf("system_status = %i\n", msg->system_status );
+    OS_printf("mavlink_version = %i\n", msg->mavlink_version );
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                 */
 /* Child Task Listener Main		                                   */
@@ -396,8 +418,9 @@ MAVLINK_InitListenerTask_Exit_Tag:
 void MAVLINK_ListenerTaskMain(void)
 {
     int32 			Status = -1;
-    uint32  		MsgSize = 0;
-    MAVLINK_MavPktV1_t msg = {0};
+    uint32  		MsgSize = sizeof(MAVLINK_MavPktV1_t);
+    MAVLINK_MavPktV1_t* msg = 0;
+    Heartbeat_t* hrt = 0;
 
 	Status = CFE_ES_RegisterChildTask();
 	if (Status == CFE_SUCCESS)
@@ -407,7 +430,11 @@ void MAVLINK_ListenerTaskMain(void)
 			//OS_printf("In MAVLINK ingest loop\n");
 			/* Receive cmd and gather data on it */
 			//MsgSize = MAVLINK_MAX_CMD_INGEST;
-			MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &msg);
+			MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &MsgSize);
+            msg = (MAVLINK_MavPktV1_t *) MAVLINK_AppData.IngestBuffer;
+            printMsg(msg);
+            hrt = (Heartbeat_t *) msg->payload;
+            printHrt(hrt);
 			//CmdMsgPtr = (CFE_SB_MsgPtr_t)MAVLINK_AppData.IngestBuffer;
 			/* Process the cmd */
 			//MAVLINK_ProcessIngestCmd(CmdMsgPtr, MsgSize);
@@ -424,6 +451,22 @@ void MAVLINK_ListenerTaskMain(void)
 		OS_printf("MAVLINK Listener Child Task Registration failed!\n");
 	}
 }
+
+void MAVLINK_SendHeartbeat(void)
+{
+    Heartbeat_t hrt = {0};
+    hrt.type = 0;
+    hrt.autopilot = 0;
+    hrt.base_mode = 0;
+    hrt.custom_mode = 0;
+    hrt.system_status = 0;
+    hrt.mavlink_version = 0;
+
+
+    //MAVLINK_SendMessage((char *) &hrt, sizeof(Heartbeat_t));
+}
+
+
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                 */
@@ -641,7 +684,8 @@ void MAVLINK_ProcessNewAppCmds(CFE_SB_Msg_t* MsgPtr)
                                   "Recvd RESET cmd (%u)", (unsigned int)uiCmdCode);
                 break;
 
-            /* TODO:  Add code to process the rest of the MAVLINK commands here */
+            case MAVLINK_HEARTBEAT_CC:
+                MAVLINK_SendHeartbeat();
 
             default:
                 MAVLINK_AppData.HkTlm.usCmdErrCnt++;
@@ -775,7 +819,7 @@ void MAVLINK_AppMain()
         */
         MAVLINK_UpdateCdsTbl();
         MAVLINK_SaveCdsTbl();
-
+        MAVLINK_SendHeartbeat();
         iStatus = MAVLINK_AcquireConfigPointers();
         if(iStatus != CFE_SUCCESS)
         {

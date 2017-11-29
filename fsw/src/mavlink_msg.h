@@ -88,6 +88,8 @@ extern "C" {
 */
 #define MAVLINK_RESET_CC                (1)
 
+#define MAVLINK_HEARTBEAT_CC                (2)
+
 /************************************************************************
 ** Local Structure Declarations
 *************************************************************************/
@@ -185,6 +187,17 @@ typedef struct
 	uint8 signature[13];      ///< Signature which allows ensuring that the link is tamper-proof
 
 } MAVLINK_MavPktV2_t;
+
+typedef struct
+{
+	uint8 type;              ///< protocol magic marker
+	uint8 autopilot;                ///< Length of payload
+	uint8 base_mode;     ///< flags that must be understood
+	uint32 custom_mode;       ///< flags that can be ignored if not understood
+	uint8 system_status;       
+	uint8 mavlink_version;       
+} Heartbeat_t;
+
 
 #ifdef __cplusplus
 }
