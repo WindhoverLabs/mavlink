@@ -11,6 +11,7 @@
 *************************************************************************/
 #include "cfe.h"
 
+#include "mavlink.h"
 #include "mavlink_platform_cfg.h"
 #include "mavlink_mission_cfg.h"
 #include "mavlink_private_ids.h"

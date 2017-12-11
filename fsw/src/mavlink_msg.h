@@ -196,7 +196,7 @@ typedef struct
 	uint32 custom_mode;       ///< flags that can be ignored if not understood
 	uint8 system_status;       
 	uint8 mavlink_version;       
-} Heartbeat_t;
+} MAVLINK_Heartbeat_t;
 
 
 #ifdef __cplusplus
