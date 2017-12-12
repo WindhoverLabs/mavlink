@@ -399,14 +399,14 @@ void printMsg(MAVLINK_MavPktV1_t *msg)
     OS_printf("checksum = %i\n\n", msg->checksum );
 }
 
-void printHrt(MAVLINK_Heartbeat_t *msg)
+void printHrt(mavlink_heartbeat_t *msg)
 {
-    OS_printf("type = %i\n", msg->type );
-    OS_printf("autopilot = %i\n", msg->autopilot );
-    OS_printf("base_mode = %i\n", msg->base_mode );
-    OS_printf("custom_mode = %i\n", msg->custom_mode );
-    OS_printf("system_status = %i\n", msg->system_status );
-    OS_printf("mavlink_version = %i\n", msg->mavlink_version );
+    OS_printf("type = %u\n", msg->type );
+    OS_printf("autopilot = %u\n", msg->autopilot );
+    OS_printf("base_mode = %u\n", msg->base_mode );
+    OS_printf("custom_mode = %u\n", msg->custom_mode );
+    OS_printf("system_status = %u\n", msg->system_status );
+    OS_printf("mavlink_version = %u\n", msg->mavlink_version );
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -418,22 +418,21 @@ void printHrt(MAVLINK_Heartbeat_t *msg)
 void MAVLINK_ListenerTaskMain(void)
 {
     int32 			Status = -1;
-    uint32  		MsgSize = sizeof(MAVLINK_MavPktV1_t);
-    MAVLINK_MavPktV1_t* msg = 0;
-    MAVLINK_Heartbeat_t* hrt = 0;
+    uint32  		MsgSize = sizeof(mavlink_message_t);
+    mavlink_message_t* msg;
 
 	Status = CFE_ES_RegisterChildTask();
 	if (Status == CFE_SUCCESS)
 	{
 		/* Ingest Loop */
 		do{
-			//OS_printf("In MAVLINK ingest loop\n");
+			OS_printf("In MAVLINK ingest loop\n");
 			/* Receive cmd and gather data on it */
-			//MsgSize = MAVLINK_MAX_CMD_INGEST;
-			//MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &MsgSize);
-            msg = (MAVLINK_MavPktV1_t *) MAVLINK_AppData.IngestBuffer;
+			MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &MsgSize);
+            msg = (mavlink_message_t *) MAVLINK_AppData.IngestBuffer;
+            MAVLINK_ProcessHeartbeat(msg);
             //printMsg(msg);
-            hrt = (MAVLINK_Heartbeat_t *) msg->payload;
+            //hrt = (MAVLINK_Heartbeat_t *) msg->payload;
             //printHrt(hrt);
 			//CmdMsgPtr = (CFE_SB_MsgPtr_t)MAVLINK_AppData.IngestBuffer;
 			/* Process the cmd */
@@ -452,34 +451,29 @@ void MAVLINK_ListenerTaskMain(void)
 	}
 }
 
+void MAVLINK_ProcessHeartbeat(mavlink_message_t msg)
+{
+	mavlink_heartbeat_t heartbeat;
+	mavlink_msg_heartbeat_decode(&msg, &heartbeat);
+	printHrt(&heartbeat);
+}
+
+
 void MAVLINK_SendHeartbeat(void)
 {
-	uint16 msgSize = 0;
-	mavlink_message_t msg = {0};
-	uint8 base_mode = 0;
-	uint32 custom_mode = 0;
-	uint8 system_status = 0;
+	uint8 system_id 		= 1;
+	uint8 component_id 		= 1;
+	mavlink_message_t msg 	= {0};
+	uint8 type				= 14;
+	uint8 autopilot 		= 0;
+	uint8 base_mode 		= 2;
+	uint32 custom_mode 		= 0;
+	uint8 system_status 	= 3;
+	uint16 msg_size 		= 0;
 
-	msgSize = mavlink_msg_heartbeat_pack(1, 0, &msg, 14, 0, 128, 0, 3);
-	//OS_printf("msgSize = %i\n", msgSize);
-
-    MAVLINK_Heartbeat_t hrt = {0};
-    MAVLINK_MavPktV1_t pkt = {0};
-
-    hrt.type = 14;
-    hrt.autopilot = 0;
-    hrt.base_mode = 128;
-    hrt.custom_mode = 0;
-    hrt.system_status = 4;
-    hrt.mavlink_version = 3;
-
-
-
-    pkt.len = sizeof(hrt);
-    memcpy(&pkt.payload, &hrt, sizeof(hrt));
-    //printMsg(&pkt);
-
-    MAVLINK_SendMessage((char *) &msg, sizeof(msgSize));
+	msg_size = mavlink_msg_heartbeat_pack(system_id, component_id, &msg, type,
+										 autopilot, base_mode, custom_mode, system_status);
+    MAVLINK_SendMessage(&msg, msg_size);
 }
 
 
@@ -511,6 +505,7 @@ int32 MAVLINK_RcvMsg(int32 iBlocking)
         switch (MsgId)
 	{
             case MAVLINK_WAKEUP_MID:
+                //MAVLINK_SendHeartbeat();
                 MAVLINK_ProcessNewCmds();
                 MAVLINK_ProcessNewData();
 
@@ -702,6 +697,7 @@ void MAVLINK_ProcessNewAppCmds(CFE_SB_Msg_t* MsgPtr)
 
             case MAVLINK_HEARTBEAT_CC:
                 MAVLINK_SendHeartbeat();
+                break;
 
             default:
                 MAVLINK_AppData.HkTlm.usCmdErrCnt++;
@@ -835,7 +831,7 @@ void MAVLINK_AppMain()
         */
         MAVLINK_UpdateCdsTbl();
         MAVLINK_SaveCdsTbl();
-        MAVLINK_SendHeartbeat();
+        //MAVLINK_SendHeartbeat();
         iStatus = MAVLINK_AcquireConfigPointers();
         if(iStatus != CFE_SUCCESS)
         {
