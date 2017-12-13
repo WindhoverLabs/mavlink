@@ -421,6 +421,8 @@ void MAVLINK_ListenerTaskMain(void)
     uint32  		MsgSize = MAVLINK_MAX_PACKET_LEN;
     mavlink_message_t* msgPtr;
 
+    int count = 0;
+
 	Status = CFE_ES_RegisterChildTask();
 	if (Status == CFE_SUCCESS)
 	{
@@ -428,16 +430,20 @@ void MAVLINK_ListenerTaskMain(void)
 		do{
 			OS_printf("\nIn MAVLINK ingest loop\n");
 			/* Receive cmd and gather data on it */
-			MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &MsgSize);
-			msgPtr = (mavlink_message_t *) MAVLINK_AppData.IngestBuffer;
-            MAVLINK_ProcessHeartbeat(*msgPtr);
-            printMsg(msgPtr);
+//			MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &MsgSize);
+//			msgPtr = (mavlink_message_t *) MAVLINK_AppData.IngestBuffer;
+//            MAVLINK_ProcessHeartbeat(*msgPtr);
+//            printMsg(msgPtr);
             //hrt = (MAVLINK_Heartbeat_t *) msg->payload;
             //printHrt(hrt);
 			//CmdMsgPtr = (CFE_SB_MsgPtr_t)MAVLINK_AppData.IngestBuffer;
 			/* Process the cmd */
 			//MAVLINK_ProcessIngestCmd(CmdMsgPtr, MsgSize);
-
+            if (count == 75)
+            {
+            	MAVLINK_SendParams();
+            }
+            count++;
 			/* Wait before next iteration */
 			OS_TaskDelay(100);
 		}while(MAVLINK_AppData.IngestActive == TRUE);
@@ -481,7 +487,7 @@ void MAVLINK_SendHeartbeat(void)
 	mavlink_message_t msg 	= {0};
 	uint8 type				= MAV_TYPE_OCTOROTOR;
 	uint8 autopilot 		= MAV_AUTOPILOT_GENERIC;
-	uint8 base_mode 		= MAV_MODE_FLAG_SAFETY_ARMED;
+	uint8 base_mode 		= MAV_MODE_FLAG_STABILIZE_ENABLED;
 	uint32 custom_mode 		= 0;
 	uint8 system_status 	= 3;
 	uint16 msg_size 		= 0;
@@ -513,6 +519,52 @@ void MAVLINK_SendHeartbeat(void)
     //OS_printf("End of send heartbeat\n");
 }
 
+void MAVLINK_SendParams(void)
+{
+	//OS_printf("Sending heartbeat\n");
+	mavlink_message_t msg 	= {0};
+	mavlink_message_t msg2 	= {0};
+	mavlink_message_t msg3 	= {0};
+	mavlink_param_value_t p = {0};
+	mavlink_param_value_t p2 = {0};
+	mavlink_param_value_t p3 = {0};
+	uint16 msg_size 		= 0;
+	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
+	char *name = "TEST_PARAM_1";
+	char *name2 = "TEST_PARAM_2";
+	char *name3 = "TEST_PARAM_3";
+
+	p.param_index = 0;
+	p.param_count = 3;
+	p.param_value = 1;
+	memcpy(&p.param_id, name, 12);
+	p.param_type = 6;
+
+	p2.param_index = 1;
+	p2.param_count = 3;
+	p2.param_value = 2;
+	memcpy(&p2.param_id, name2, 12);
+	p2.param_type = 6;
+
+	p3.param_index = 2;
+	p3.param_count = 3;
+	p3.param_value = 3;
+	memcpy(&p3.param_id, name3, 12);
+	p3.param_type = 6;
+
+	mavlink_msg_param_value_encode(1,1, &msg, &p);
+	mavlink_msg_param_value_encode(1,1, &msg2, &p2);
+	mavlink_msg_param_value_encode(1,1, &msg3, &p3);
+
+	msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
+    MAVLINK_SendMessage((char *) &msgBuf, msg_size);
+
+    msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg2);
+    MAVLINK_SendMessage((char *) &msgBuf, msg_size);
+
+	msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg3);
+	MAVLINK_SendMessage((char *) &msgBuf, msg_size);
+}
 
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
