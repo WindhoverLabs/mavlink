@@ -387,7 +387,7 @@ MAVLINK_InitListenerTask_Exit_Tag:
     return Status;
 }
 
-void printMsg(MAVLINK_MavPktV1_t *msg)
+void printMsg(mavlink_message_t *msg)
 {
     OS_printf("magic = %i\n", msg->magic );
     OS_printf("len = %i\n", msg->len );
@@ -418,20 +418,20 @@ void printHrt(mavlink_heartbeat_t *msg)
 void MAVLINK_ListenerTaskMain(void)
 {
     int32 			Status = -1;
-    uint32  		MsgSize = sizeof(mavlink_message_t);
-    mavlink_message_t* msg;
+    uint32  		MsgSize = MAVLINK_MAX_PACKET_LEN;
+    mavlink_message_t* msgPtr;
 
 	Status = CFE_ES_RegisterChildTask();
 	if (Status == CFE_SUCCESS)
 	{
 		/* Ingest Loop */
 		do{
-			OS_printf("In MAVLINK ingest loop\n");
+			OS_printf("\nIn MAVLINK ingest loop\n");
 			/* Receive cmd and gather data on it */
 			MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &MsgSize);
-            msg = (mavlink_message_t *) MAVLINK_AppData.IngestBuffer;
-            MAVLINK_ProcessHeartbeat(msg);
-            //printMsg(msg);
+			msgPtr = (mavlink_message_t *) MAVLINK_AppData.IngestBuffer;
+            MAVLINK_ProcessHeartbeat(*msgPtr);
+            printMsg(msgPtr);
             //hrt = (MAVLINK_Heartbeat_t *) msg->payload;
             //printHrt(hrt);
 			//CmdMsgPtr = (CFE_SB_MsgPtr_t)MAVLINK_AppData.IngestBuffer;
@@ -455,25 +455,62 @@ void MAVLINK_ProcessHeartbeat(mavlink_message_t msg)
 {
 	mavlink_heartbeat_t heartbeat;
 	mavlink_msg_heartbeat_decode(&msg, &heartbeat);
+	OS_printf("\n");
+	if(heartbeat.type == MAV_TYPE_GCS)
+	{
+		OS_printf("Found GCS heartbeat\n");
+	}
+	else if(heartbeat.type == MAV_TYPE_OCTOROTOR)
+	{
+		OS_printf("Found our own heartbeat\n");
+	}
+	else
+	{
+		OS_printf("Found UNKNOWN heartbeat\n");
+	}
 	printHrt(&heartbeat);
+	OS_printf("\n");
 }
 
 
 void MAVLINK_SendHeartbeat(void)
 {
+	//OS_printf("Sending heartbeat\n");
 	uint8 system_id 		= 1;
-	uint8 component_id 		= 1;
+	uint8 component_id 		= MAV_COMP_ID_AUTOPILOT1;
 	mavlink_message_t msg 	= {0};
-	uint8 type				= 14;
-	uint8 autopilot 		= 0;
-	uint8 base_mode 		= 2;
+	uint8 type				= MAV_TYPE_OCTOROTOR;
+	uint8 autopilot 		= MAV_AUTOPILOT_GENERIC;
+	uint8 base_mode 		= MAV_MODE_FLAG_SAFETY_ARMED;
 	uint32 custom_mode 		= 0;
 	uint8 system_status 	= 3;
 	uint16 msg_size 		= 0;
+	mavlink_heartbeat_t hrt;
+	mavlink_heartbeat_t hrt_decoded;
+	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
+
+	hrt.type = type;
+	hrt.autopilot = autopilot;
+	hrt.base_mode = base_mode;
+	hrt.custom_mode = custom_mode;
+	hrt.system_status = system_status;
+
+	//OS_printf("\n\nPre encoding\n");
+	//printHrt(&hrt);
 
 	msg_size = mavlink_msg_heartbeat_pack(system_id, component_id, &msg, type,
 										 autopilot, base_mode, custom_mode, system_status);
-    MAVLINK_SendMessage(&msg, msg_size);
+	//OS_printf("\n\nDecoded hrt\n");
+	//mavlink_msg_heartbeat_decode(&msg, &hrt_decoded);
+	//printHrt(&hrt_decoded);
+	//OS_printf("\nDecoded msg\n");
+	//printMsg(&msg);
+	//OS_printf("MsgLen = %u\n", msg_size);
+
+	msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
+
+    MAVLINK_SendMessage((char *) &msgBuf, msg_size);
+    //OS_printf("End of send heartbeat\n");
 }
 
 
@@ -505,7 +542,7 @@ int32 MAVLINK_RcvMsg(int32 iBlocking)
         switch (MsgId)
 	{
             case MAVLINK_WAKEUP_MID:
-                //MAVLINK_SendHeartbeat();
+                MAVLINK_SendHeartbeat();
                 MAVLINK_ProcessNewCmds();
                 MAVLINK_ProcessNewData();
 
