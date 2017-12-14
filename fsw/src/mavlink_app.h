@@ -66,11 +66,11 @@ typedef struct
 
     /* Config table-related */
 
-    /** \brief Config Table Handle */
-    CFE_TBL_Handle_t  ConfigTblHdl;
+    /** \brief Param Table Handle */
+    CFE_TBL_Handle_t  ParamTblHdl;
 
-    /** \brief Config Table Pointer */
-    MAVLINK_ParamTblEntry_t*  ConfigTblPtr;
+    /** \brief Param Table Pointer */
+    MAVLINK_ParamTblEntry_t*  ParamTblPtr;
 
     /* Critical Data Storage (CDS) table-related */
 

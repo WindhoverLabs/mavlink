@@ -254,7 +254,7 @@ int32 MAVLINK_InitApp()
         goto MAVLINK_InitApp_Exit_Tag;
     }
 
-    iStatus = MAVLINK_InitConfigTbl();
+    iStatus = MAVLINK_InitParamTbl();
     if (iStatus != CFE_SUCCESS)
     {
         (void) CFE_EVS_SendEvent(MAVLINK_INIT_ERR_EID, CFE_EVS_ERROR,
@@ -575,6 +575,31 @@ void MAVLINK_SendParamsToQGC(void)
 
 	msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg3);
 	MAVLINK_SendMessage((char *) &msgBuf, msg_size);
+}
+
+void MAVLINK_SendTableParamsToQGC(void)
+{
+	//OS_printf("Sending heartbeat\n");
+	uint32 i =0;
+	uint16 msg_size 		= 0;
+	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
+	mavlink_param_value_t param_value_msg = {0};
+
+
+	/* Iterate over table and send each parameter */
+	for(i = 0; i < MAVLINK_PARAM_TABLE_MAX_ENTRIES; ++i)
+	{
+		param_value_msg.param_index = i;
+		param_value_msg.param_count = 10;// set equal to total number of params?
+		param_value_msg.param_value = MAVLINK_AppData.ParamTblPtr->params[i].value;
+		memcpy(&param_value_msg.param_id, MAVLINK_AppData.ParamTblPtr->params[i].name,
+				sizeof(MAVLINK_AppData.ParamTblPtr->params[i].name));
+		param_value_msg.param_type = MAVLINK_AppData.ParamTblPtr->params[i].type;
+
+		msg_size = mavlink_msg_to_send_buffer(msgBuf, &param_value_msg);
+		MAVLINK_SendMessage((char *) &msgBuf, msg_size);
+	}
+
 }
 
 
