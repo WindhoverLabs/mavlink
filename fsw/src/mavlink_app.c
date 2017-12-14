@@ -428,7 +428,7 @@ void MAVLINK_ListenerTaskMain(void)
 	{
 		/* Ingest Loop */
 		do{
-			OS_printf("\nIn MAVLINK ingest loop\n");
+			//OS_printf("\nIn MAVLINK ingest loop\n");
 
 			/* Receive mavlink message */
 			MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &MsgSize);
@@ -467,6 +467,22 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 			MAVLINK_ProcessHeartbeat(decodedMsg);
 			break;
 		}
+		case MAVLINK_MSG_ID_PARAM_REQUEST_LIST:
+		{
+			OS_printf("QGC requseting params\n");
+			MAVLINK_SendParamsToQGC();
+			break;
+		}
+		case MAVLINK_MSG_ID_COMMAND_LONG:
+		{
+			OS_printf("Recieved command long\n");
+			mavlink_command_long_t 		decodedMsg;
+			mavlink_msg_command_long_decode(&msg, &decodedMsg);
+			//MAVLINK_ProcessHeartbeat(decodedMsg);
+			break;
+		}
+
+
 
 		default:
 			OS_printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", msg.sysid, msg.compid, msg.len, msg.msgid);
@@ -514,7 +530,7 @@ void MAVLINK_SendHeartbeat(void)
     MAVLINK_SendMessage((char *) &msgBuf, msg_size);
 }
 
-void MAVLINK_SendParams(void)
+void MAVLINK_SendParamsToQGC(void)
 {
 	//OS_printf("Sending heartbeat\n");
 	mavlink_message_t msg 	= {0};
