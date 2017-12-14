@@ -84,7 +84,7 @@ typedef struct
     boolean IngestActive;
 
     /** \brief Buffer for child task cmd ingest */
-    uint8           IngestBuffer[MAVLINK_MAX_CMD_INGEST];
+    uint8           IngestBuffer[MAVLINK_MAX_PACKET_LEN];
 
     /** \brief ID of listener child task */
 	uint32          ListenerTaskID;

@@ -417,34 +417,77 @@ void printHrt(mavlink_heartbeat_t *msg)
 
 void MAVLINK_ListenerTaskMain(void)
 {
-    int32 			Status = -1;
+    uint8			Status = 0;
     uint32  		MsgSize = MAVLINK_MAX_PACKET_LEN;
+    uint32			bufferIndex = 0;
+    uint8			BufferIndexValue = 0;
+    mavlink_status_t rx_msg_status = {0};
+    mavlink_status_t msg_status = {0};
     mavlink_message_t* msgPtr;
-
-    int count = 0;
 
 	Status = CFE_ES_RegisterChildTask();
 	if (Status == CFE_SUCCESS)
 	{
 		/* Ingest Loop */
 		do{
+			Status = 0;
 			OS_printf("\nIn MAVLINK ingest loop\n");
-			/* Receive cmd and gather data on it */
-//			MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &MsgSize);
+
+			/* Receive mavlink message */
+			MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &MsgSize);
+
+			/* Decode the message before casting to mavlink_message_t.
+			 * Checksum is located on the rear on the wire and in the
+			 * front in memory. */
+			while(bufferIndex < MsgSize)
+			{
+				OS_printf("In while\n");
+				BufferIndexValue = MAVLINK_AppData.IngestBuffer[bufferIndex];
+
+				Status = mavlink_parse_char(0, BufferIndexValue, msgPtr, &msg_status);
+
+//				Status = mavlink_frame_char_buffer(MAVLINK_AppData.IngestBuffer,
+//													&rx_msg_status,
+//													BufferIndexValue,
+//													msgPtr,
+//													&msg_status);
+				OS_printf("ret\n");
+				if (Status == 0)
+				{
+					OS_printf("No message to decode or bad CRC\n");
+					break;
+				}
+				else if (Status == 1)
+				{
+					OS_printf("Message successfully decoded\n");
+					break;
+				}
+				else if (Status == 2)
+				{
+					OS_printf("Message has bad CRC\n");
+					break;
+				}
+				else if (Status == MAVLINK_FRAMING_INCOMPLETE)
+				{
+					OS_printf("Processing message...\n");
+					bufferIndex++;
+				}
+				else
+				{
+					OS_printf("I don't think we should get here\n");
+				}
+			}
+
+			bufferIndex = 0;
+
+			/* Cast to mavlink message and pass to router */
 //			msgPtr = (mavlink_message_t *) MAVLINK_AppData.IngestBuffer;
 //            MAVLINK_ProcessHeartbeat(*msgPtr);
 //            printMsg(msgPtr);
-            //hrt = (MAVLINK_Heartbeat_t *) msg->payload;
-            //printHrt(hrt);
-			//CmdMsgPtr = (CFE_SB_MsgPtr_t)MAVLINK_AppData.IngestBuffer;
-			/* Process the cmd */
+
 			//MAVLINK_ProcessIngestCmd(CmdMsgPtr, MsgSize);
-            if (count == 75)
-            {
-            	MAVLINK_SendParams();
-            }
-            count++;
-			/* Wait before next iteration */
+
+            /* Wait before next iteration */
 			OS_TaskDelay(100);
 		}while(MAVLINK_AppData.IngestActive == TRUE);
 
