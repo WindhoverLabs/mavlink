@@ -41,8 +41,11 @@ extern "C" {
 /** \brief Definition for a single config table entry */
 typedef struct
 {
-	char    param_name[MAVLINK_MSG_PARAM_NAME_LEN];
-    float   param;
+	uint8 vehicle_id;
+	uint8 component_id;
+	char name[MAVLINK_MSG_PARAM_NAME_LEN];
+    float value;
+    uint8 type;
 } MAVLINK_ParamData_t;
 
 /** \brief Definition for a single config table entry */
