@@ -88,7 +88,9 @@ extern "C" {
 */
 #define MAVLINK_RESET_CC                (1)
 
-#define MAVLINK_HEARTBEAT_CC                (2)
+#define MAVLINK_GET_PARAMS_CC                (2)
+
+#define MAVLINK_SET_PARAM_CC                (3)
 
 /************************************************************************
 ** Local Structure Declarations
@@ -155,7 +157,7 @@ typedef struct
 typedef struct
 {
     /** \brief cFE SB Tlm Msg Hdr */
-    uint8              TlmHeader[CFE_SB_TLM_HDR_SIZE];
+    uint8              TlmHeader[CFE_SB_TLM_HDR_SIZE]; //TODO tlm or cmd?
 
     char name[MAVLINK_MSG_PARAM_NAME_LEN];
 
@@ -163,6 +165,16 @@ typedef struct
 
 } MAVLINK_ParamValue_t;
 
+/**
+**  \brief MAVLINK parameter broadcast
+*/
+typedef struct
+{
+	uint8  ucCmdHeader[CFE_SB_CMD_HDR_SIZE];
+	char name[MAVLINK_MSG_PARAM_NAME_LEN];
+    float value;
+    uint8 type;
+} MAVLINK_SetParamCmd_t;
 
 #ifdef __cplusplus
 }

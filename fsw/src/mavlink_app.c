@@ -611,7 +611,6 @@ void MAVLINK_SendParamsToQGC(void)
 
 void MAVLINK_SendParamsToSB(void)
 {
-	//OS_printf("Sending heartbeat\n");
 	int32 Status;
 	uint32 i =0;
 	uint16 msg_size 		= 0;
@@ -643,6 +642,50 @@ void MAVLINK_SendParamsToSB(void)
 		}
 	}
 
+}
+
+void MAVLINK_AddParam(MAVLINK_SetParamCmd_t* SetParamMsg)
+{
+	/* Iterate over table to find first empty index */
+	for(int i = 0; i < MAVLINK_PARAM_TABLE_MAX_ENTRIES; ++i)
+	{
+		if (MAVLINK_AppData.ParamTblPtr->params[i].enabled == 0)
+		{
+			/* Update parameter message with current table index values */
+			MAVLINK_AppData.ParamTblPtr->params[i].enabled = 1;
+			MAVLINK_AppData.ParamTblPtr->params[i].value = SetParamMsg->value;
+			memcpy(MAVLINK_AppData.ParamTblPtr->params[i].name, SetParamMsg->name,
+					sizeof(SetParamMsg->name)); //need to clear string?
+			MAVLINK_AppData.ParamTblPtr->params[i].type = SetParamMsg->type;
+		}
+	}
+}
+
+
+void MAVLINK_SetParam(MAVLINK_SetParamCmd_t* SetParamMsg)
+{
+	boolean paramExists = FALSE;
+
+	/* Iterate over table to find parameter */
+	for(int i = 0; i < MAVLINK_PARAM_TABLE_MAX_ENTRIES; ++i)
+	{
+		/* Only check enabled parameters */
+		if (MAVLINK_AppData.ParamTblPtr->params[i].enabled == 1)
+		{
+			if (strcmp(SetParamMsg->name, MAVLINK_AppData.ParamTblPtr->params[i].name))
+			{
+				/* Update parameter message with current table index values */
+				paramExists = TRUE;
+				MAVLINK_AppData.ParamTblPtr->params[i].value = SetParamMsg->value;
+				MAVLINK_AppData.ParamTblPtr->params[i].type = SetParamMsg->type;
+			}
+		}
+	}
+
+	if (!paramExists)
+	{
+		MAVLINK_AddParam(SetParamMsg);
+	}
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -862,9 +905,13 @@ void MAVLINK_ProcessNewAppCmds(CFE_SB_Msg_t* MsgPtr)
                                   "Recvd RESET cmd (%u)", (unsigned int)uiCmdCode);
                 break;
 
-            case MAVLINK_HEARTBEAT_CC:
-                MAVLINK_SendHeartbeat();
-                break;
+            case MAVLINK_GET_PARAMS_CC:
+            	MAVLINK_SendParamsToSB();
+				break;
+
+            case MAVLINK_SET_PARAM_CC:
+            	MAVLINK_SetParam(MsgPtr);
+            	break;
 
             default:
                 MAVLINK_AppData.HkTlm.usCmdErrCnt++;
