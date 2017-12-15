@@ -496,11 +496,11 @@ void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat)
 {
 	if(heartbeat.type == MAV_TYPE_GCS)
 	{
-		OS_printf("Found GCS heartbeat\n");
+		OS_printf("Found QGC heartbeat\n");
 	}
 	else if(heartbeat.type == MAV_TYPE_OCTOROTOR)
 	{
-		OS_printf("Found our own heartbeat\n");
+		OS_printf("Found our heartbeat\n");
 	}
 	else
 	{
@@ -512,7 +512,7 @@ void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat)
 
 void MAVLINK_SendHeartbeat(void)
 {
-	uint8 system_id 		= 1;
+	uint8 system_id 		= MAVLINK_PARAM_SYSTEM_ID;
 	uint8 component_id 		= MAV_COMP_ID_AUTOPILOT1;
 	mavlink_message_t msg 	= {0};
 	uint8 type				= MAV_TYPE_OCTOROTOR;
@@ -530,7 +530,7 @@ void MAVLINK_SendHeartbeat(void)
     MAVLINK_SendMessage((char *) &msgBuf, msg_size);
 }
 
-void MAVLINK_SendParamsToQGC(void)
+void MAVLINK_SendToQGC(void)
 {
 	//OS_printf("Sending heartbeat\n");
 	mavlink_message_t msg 	= {0};
@@ -577,31 +577,73 @@ void MAVLINK_SendParamsToQGC(void)
 	MAVLINK_SendMessage((char *) &msgBuf, msg_size);
 }
 
-void MAVLINK_SendTableParamsToQGC(void)
+void MAVLINK_SendParamsToQGC(void)
 {
 	//OS_printf("Sending heartbeat\n");
 	uint32 i =0;
 	uint16 msg_size 		= 0;
 	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
 	mavlink_param_value_t param_value_msg = {0};
+	mavlink_message_t msg 	= {0};
 
 
 	/* Iterate over table and send each parameter */
 	for(i = 0; i < MAVLINK_PARAM_TABLE_MAX_ENTRIES; ++i)
 	{
-		param_value_msg.param_index = i;
-		param_value_msg.param_count = 10;// set equal to total number of params?
-		param_value_msg.param_value = MAVLINK_AppData.ParamTblPtr->params[i].value;
-		memcpy(&param_value_msg.param_id, MAVLINK_AppData.ParamTblPtr->params[i].name,
-				sizeof(MAVLINK_AppData.ParamTblPtr->params[i].name));
-		param_value_msg.param_type = MAVLINK_AppData.ParamTblPtr->params[i].type;
+		if (MAVLINK_AppData.ParamTblPtr->params[i].enabled == 1)
+		{
+			/* Update parameter message with current table index values */
+			param_value_msg.param_index = i;
+			param_value_msg.param_count = 10;// set equal to total number of params?
+			param_value_msg.param_value = MAVLINK_AppData.ParamTblPtr->params[i].value;
+			memcpy(&param_value_msg.param_id, MAVLINK_AppData.ParamTblPtr->params[i].name,
+					sizeof(MAVLINK_AppData.ParamTblPtr->params[i].name));
+			param_value_msg.param_type = MAVLINK_AppData.ParamTblPtr->params[i].type;
 
-		msg_size = mavlink_msg_to_send_buffer(msgBuf, &param_value_msg);
-		MAVLINK_SendMessage((char *) &msgBuf, msg_size);
+			/* Encode mavlink message and send to ground station */
+			mavlink_msg_param_value_encode(MAVLINK_PARAM_SYSTEM_ID, MAVLINK_PARAM_COMPONENT_ID, &msg, &param_value_msg);
+			msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
+			MAVLINK_SendMessage((char *) &msgBuf, msg_size);
+		}
 	}
 
 }
 
+void MAVLINK_SendParamsToSB(void)
+{
+	//OS_printf("Sending heartbeat\n");
+	int32 Status;
+	uint32 i =0;
+	uint16 msg_size 		= 0;
+	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
+	MAVLINK_ParamValue_t ParamValueMsg = {0};
+	CFE_SB_MsgPtr_t 	CmdMsgPtr;
+
+
+	/* Iterate over table and send each parameter */
+	for(i = 0; i < MAVLINK_PARAM_TABLE_MAX_ENTRIES; ++i)
+	{
+		if (MAVLINK_AppData.ParamTblPtr->params[i].enabled == 1)
+		{
+			/* Update parameter message with current table index values */
+			ParamValueMsg.value = MAVLINK_AppData.ParamTblPtr->params[i].value;
+			memcpy(ParamValueMsg.name, MAVLINK_AppData.ParamTblPtr->params[i].name,
+					sizeof(MAVLINK_AppData.ParamTblPtr->params[i].name));
+			//ParamValueMsg.param_type = MAVLINK_AppData.ParamTblPtr->params[i].type; // TODO need this?
+
+			/* Init Airliner message and send to SB */
+			CFE_SB_InitMsg(&ParamValueMsg, MAVLINK_PARAM_VALUE_MID, sizeof(MAVLINK_ParamValue_t), FALSE);
+			CmdMsgPtr = (CFE_SB_MsgPtr_t)&ParamValueMsg;
+
+			Status = CFE_SB_SendMsg(CmdMsgPtr);
+			if (Status != CFE_SUCCESS)
+			{
+				/* TODO: Decide what to do if the send message fails. */
+			}
+		}
+	}
+
+}
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                 */
