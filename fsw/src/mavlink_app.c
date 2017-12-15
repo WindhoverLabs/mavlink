@@ -530,7 +530,7 @@ void MAVLINK_SendHeartbeat(void)
     MAVLINK_SendMessage((char *) &msgBuf, msg_size);
 }
 
-void MAVLINK_SendToQGC(void)
+void MAVLINK_SendToQGC(void) //DEBUG ONLY
 {
 	//OS_printf("Sending heartbeat\n");
 	mavlink_message_t msg 	= {0};
