@@ -433,6 +433,12 @@ void MAVLINK_ListenerTaskMain(void)
 			/* Receive mavlink message */
 			MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &MsgSize);
 
+			if(MsgSize == -1)
+			{
+				MsgSize = MAVLINK_MAX_PACKET_LEN;
+				continue;
+			}
+
 			/* Decode the message */
 			for (index = 0; index < MsgSize; ++index)
 			{

@@ -32,7 +32,6 @@ extern "C" {
 ** Local Defines
 *************************************************************************/
 #define MAVLINK_TIMEOUT_MSEC             	(1000)
-#define MAVLINK_MAX_CMD_INGEST           			MAVLINK_MAX_PACKET_LEN
 #define MAVLINK_LISTENER_TASK_NAME  				"MAVLINK_LISTENER"
 #define MAVLINK_LISTENER_TASK_STACK_SIZE			16000
 #define MAVLINK_LISTENER_TASK_PRIORITY				100
