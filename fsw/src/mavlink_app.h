@@ -11,7 +11,6 @@
 *************************************************************************/
 #include "cfe.h"
 
-#include "mavlink.h"
 #include "mavlink_platform_cfg.h"
 #include "mavlink_mission_cfg.h"
 #include "mavlink_private_ids.h"
@@ -23,6 +22,7 @@
 #include "mavlink_config_utils.h"
 #include "mavlink_cds_utils.h"
 #include "mavlink_custom.h"
+#include "mavlink.h"
 
 #ifdef __cplusplus
 extern "C" {

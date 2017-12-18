@@ -18,13 +18,8 @@ add_airliner_app_def(mavlink
    
     INCLUDES
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/
-		${CMAKE_CURRENT_SOURCE_DIR}/../public_inc/
-		${CMAKE_CURRENT_SOURCE_DIR}/../public_inc/common/
+        ${PROJECT_SOURCE_DIR}/mavlink/include/mavlink/v1.0/common/
 
-    PUBLIC_INCLUDES
-        ${CMAKE_CURRENT_SOURCE_DIR}/../public_inc/
-		${CMAKE_CURRENT_SOURCE_DIR}/../public_inc/common/
-        
     USER_DOCS   ${CMAKE_CURRENT_SOURCE_DIR}/user_doxy.in   
     DESIGN_DOCS   ${CMAKE_CURRENT_SOURCE_DIR}/detail_doxy.in   
 )
