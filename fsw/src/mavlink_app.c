@@ -362,19 +362,6 @@ int32 MAVLINK_InitChildTasks(void)
 		goto MAVLINK_InitListenerTask_Exit_Tag;
 	}
 
-//	Status= CFE_ES_CreateChildTask(&MAVLINK_AppData.SerialListenerTaskID,
-//									MAVLINK_SERIAL_LISTENER_TASK_NAME,
-//									MAVLINK_SerializedListenerTaskMain,
-//									NULL,
-//									MAVLINK_SERIAL_LISTENER_TASK_STACK_SIZE,
-//									MAVLINK_SERIAL_LISTENER_TASK_PRIORITY,
-//									0);
-//
-//	if (Status != CFE_SUCCESS)
-//	{
-//		goto MAVLINK_InitListenerTask_Exit_Tag;
-//	}
-
 MAVLINK_InitListenerTask_Exit_Tag:
 	if (Status != CFE_SUCCESS)
 	{
