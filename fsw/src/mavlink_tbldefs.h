@@ -11,6 +11,7 @@
 *************************************************************************/
 #include "cfe.h"
 #include "mavlink_platform_cfg.h"
+#include "mavlink_msg.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,9 +45,7 @@ typedef struct
 	uint8 enabled;
 	uint8 vehicle_id;
 	uint8 component_id;
-	char name[MAVLINK_MSG_PARAM_NAME_LEN];
-    float value;
-    uint8 type;
+	MAVLINK_ParamData_t param_data;
 } MAVLINK_ParamTblData_t;
 
 /** \brief Definition for a single config table entry */

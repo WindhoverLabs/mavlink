@@ -329,6 +329,14 @@ boolean  MAVLINK_VerifyCmdLength(CFE_SB_Msg_t* MsgPtr, uint16 usExpectedLen);
 int32 MAVLINK_InitChildTasks(void);
 void MAVLINK_ListenerTaskMain(void);
 void MAVLINK_CleanupCallback();
+void MAVLINK_EnableConnection(void);
+void MAVLINK_DisableConnection(void);
+void MAVLINK_MessageRouter(mavlink_message_t msg);
+void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat);
+void MAVLINK_SendHeartbeat(void);
+void MAVLINK_SendParamsToGCS(void);
+void MAVLINK_AddParam(MAVLINK_ParamData_t param);
+void MAVLINK_SetParam(MAVLINK_SetParamCmd_t* SetParamMsg);
 
 #ifdef __cplusplus
 }

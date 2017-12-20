@@ -156,14 +156,11 @@ typedef struct
 */
 typedef struct
 {
-    /** \brief cFE SB Tlm Msg Hdr */
-    uint8              TlmHeader[CFE_SB_TLM_HDR_SIZE]; //TODO tlm or cmd?
-
-    char name[MAVLINK_MSG_PARAM_NAME_LEN];
-
+	char name[MAVLINK_MSG_PARAM_NAME_LEN];
     float value;
-
-} MAVLINK_ParamValue_t;
+    uint8 type;
+    uint16 param_index;
+} MAVLINK_ParamData_t;
 
 /**
 **  \brief MAVLINK parameter broadcast
@@ -172,9 +169,18 @@ typedef struct
 {
 	uint8  ucCmdHeader[CFE_SB_CMD_HDR_SIZE];
 	char name[MAVLINK_MSG_PARAM_NAME_LEN];
-    float value;
-    uint8 type;
+	uint16 param_index;
+} MAVLINK_GetParamCmd_t;
+
+/**
+**  \brief MAVLINK parameter broadcast
+*/
+typedef struct
+{
+	uint8  ucCmdHeader[CFE_SB_CMD_HDR_SIZE];
+	MAVLINK_ParamData_t param_data;
 } MAVLINK_SetParamCmd_t;
+
 
 #ifdef __cplusplus
 }

@@ -374,13 +374,13 @@ MAVLINK_InitListenerTask_Exit_Tag:
     return Status;
 }
 
-void MAVLINK_EnableConnection()
+void MAVLINK_EnableConnection(void)
 {
 	MAVLINK_AppData.HeartbeatActive = TRUE;
 	MAVLINK_AppData.IngestActive = TRUE;
 }
 
-void MAVLINK_DisableConnection()
+void MAVLINK_DisableConnection(void)
 {
 	MAVLINK_AppData.HeartbeatActive = FALSE;
 	MAVLINK_AppData.IngestActive = FALSE;
@@ -450,7 +450,7 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 		case MAVLINK_MSG_ID_PARAM_REQUEST_LIST:
 		{
 			OS_printf("QGC requseting params\n");
-			MAVLINK_SendParamsToQGC();
+			MAVLINK_SendParamsToGCS();
 			break;
 		}
 		case MAVLINK_MSG_ID_PARAM_REQUEST_READ:
@@ -559,7 +559,7 @@ void MAVLINK_SendToQGC(void) //DEBUG ONLY
 	MAVLINK_SendMessage((char *) &msgBuf, msg_size);
 }
 
-void MAVLINK_SendParamsToQGC(void)
+void MAVLINK_SendParamsToGCS(void)
 {
 	uint32 i =0;
 	uint16 msg_size 		= 0;
@@ -575,10 +575,10 @@ void MAVLINK_SendParamsToQGC(void)
 			/* Update parameter message with current table index values */
 			param_value_msg.param_index = i;
 			param_value_msg.param_count = 10;// set equal to total number of params?
-			param_value_msg.param_value = MAVLINK_AppData.ParamTblPtr->params[i].value;
-			memcpy(&param_value_msg.param_id, MAVLINK_AppData.ParamTblPtr->params[i].name,
-					sizeof(MAVLINK_AppData.ParamTblPtr->params[i].name));
-			param_value_msg.param_type = MAVLINK_AppData.ParamTblPtr->params[i].type;
+			param_value_msg.param_value = MAVLINK_AppData.ParamTblPtr->params[i].param_data.value;
+			memcpy(&param_value_msg.param_id, MAVLINK_AppData.ParamTblPtr->params[i].param_data.name,
+					sizeof(MAVLINK_AppData.ParamTblPtr->params[i].param_data.name));
+			param_value_msg.param_type = MAVLINK_AppData.ParamTblPtr->params[i].param_data.type;
 
 			/* Encode mavlink message and send to ground station */
 			mavlink_msg_param_value_encode(MAVLINK_PARAM_SYSTEM_ID, MAVLINK_PARAM_COMPONENT_ID, &msg, &param_value_msg);
@@ -595,7 +595,7 @@ void MAVLINK_SendParamsToSB(void)
 	uint32 i =0;
 	uint16 msg_size 		= 0;
 	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
-	MAVLINK_ParamValue_t ParamValueMsg = {0};
+	MAVLINK_ParamData_t ParamValueMsg = {0};
 	CFE_SB_MsgPtr_t 	CmdMsgPtr;
 
 
@@ -605,13 +605,13 @@ void MAVLINK_SendParamsToSB(void)
 		if (MAVLINK_AppData.ParamTblPtr->params[i].enabled == 1)
 		{
 			/* Update parameter message with current table index values */
-			ParamValueMsg.value = MAVLINK_AppData.ParamTblPtr->params[i].value;
-			memcpy(ParamValueMsg.name, MAVLINK_AppData.ParamTblPtr->params[i].name,
-					sizeof(MAVLINK_AppData.ParamTblPtr->params[i].name));
+			ParamValueMsg.value = MAVLINK_AppData.ParamTblPtr->params[i].param_data.value;
+			memcpy(ParamValueMsg.name, MAVLINK_AppData.ParamTblPtr->params[i].param_data.name,
+					sizeof(MAVLINK_AppData.ParamTblPtr->params[i].param_data.name));
 			//ParamValueMsg.param_type = MAVLINK_AppData.ParamTblPtr->params[i].type; // TODO need this?
 
 			/* Init Airliner message and send to SB */
-			CFE_SB_InitMsg(&ParamValueMsg, MAVLINK_PARAM_VALUE_MID, sizeof(MAVLINK_ParamValue_t), FALSE);
+			CFE_SB_InitMsg(&ParamValueMsg, MAVLINK_PARAM_VALUE_MID, sizeof(MAVLINK_ParamData_t), FALSE);
 			CmdMsgPtr = (CFE_SB_MsgPtr_t)&ParamValueMsg;
 
 			Status = CFE_SB_SendMsg(CmdMsgPtr);
@@ -624,7 +624,7 @@ void MAVLINK_SendParamsToSB(void)
 
 }
 
-void MAVLINK_AddParam(MAVLINK_SetParamCmd_t* SetParamMsg)
+void MAVLINK_AddParam(MAVLINK_ParamData_t param)
 {
 	/* Iterate over table to find first empty index */
 	for(int i = 0; i < MAVLINK_PARAM_TABLE_MAX_ENTRIES; ++i)
@@ -633,10 +633,10 @@ void MAVLINK_AddParam(MAVLINK_SetParamCmd_t* SetParamMsg)
 		{
 			/* Update parameter message with current table index values */
 			MAVLINK_AppData.ParamTblPtr->params[i].enabled = 1;
-			MAVLINK_AppData.ParamTblPtr->params[i].value = SetParamMsg->value;
-			memcpy(MAVLINK_AppData.ParamTblPtr->params[i].name, SetParamMsg->name,
-					sizeof(SetParamMsg->name)); //need to clear string?
-			MAVLINK_AppData.ParamTblPtr->params[i].type = SetParamMsg->type;
+			MAVLINK_AppData.ParamTblPtr->params[i].param_data.value = param.value;
+			memcpy(MAVLINK_AppData.ParamTblPtr->params[i].param_data.name, param.name,
+					sizeof(param.name)); //need to clear string?
+			MAVLINK_AppData.ParamTblPtr->params[i].param_data.type = param.type;
 		}
 	}
 }
@@ -652,19 +652,19 @@ void MAVLINK_SetParam(MAVLINK_SetParamCmd_t* SetParamMsg)
 		/* Only check enabled parameters */
 		if (MAVLINK_AppData.ParamTblPtr->params[i].enabled == 1)
 		{
-			if (strcmp(SetParamMsg->name, MAVLINK_AppData.ParamTblPtr->params[i].name))
+			if (strcmp(SetParamMsg->param_data.name, MAVLINK_AppData.ParamTblPtr->params[i].param_data.name))
 			{
 				/* Update parameter message with current table index values */
 				paramExists = TRUE;
-				MAVLINK_AppData.ParamTblPtr->params[i].value = SetParamMsg->value;
-				MAVLINK_AppData.ParamTblPtr->params[i].type = SetParamMsg->type;
+				MAVLINK_AppData.ParamTblPtr->params[i].param_data.value = SetParamMsg->param_data.value;
+				MAVLINK_AppData.ParamTblPtr->params[i].param_data.type = SetParamMsg->param_data.type;
 			}
 		}
 	}
 
 	if (!paramExists)
 	{
-		MAVLINK_AddParam(SetParamMsg);
+		MAVLINK_AddParam(SetParamMsg->param_data);
 	}
 }
 
@@ -890,7 +890,7 @@ void MAVLINK_ProcessNewAppCmds(CFE_SB_Msg_t* MsgPtr)
 				break;
 
             case MAVLINK_SET_PARAM_CC:
-            	MAVLINK_SetParam(MsgPtr);
+            	MAVLINK_SetParam((MAVLINK_SetParamCmd_t *) MsgPtr);
             	break;
 
             default:
@@ -1025,7 +1025,7 @@ void MAVLINK_AppMain()
         */
         MAVLINK_UpdateCdsTbl();
         MAVLINK_SaveCdsTbl();
-        iStatus = MAVLINK_AcquireConfigPointers();
+        iStatus = MAVLINK_AcquireParamPointers();
         if(iStatus != CFE_SUCCESS)
         {
             /* We apparently tried to load a new table but failed.  Terminate the application. */

@@ -57,7 +57,7 @@ extern "C" {
 **  \endreturns
 **
 *************************************************************************/
-int32  MAVLINK_InitConfigTbl(void);
+int32  MAVLINK_InitParamTbl(void);
 
 /************************************************************************/
 /** \brief Validate MAVLINK Config table
@@ -73,7 +73,7 @@ int32  MAVLINK_InitConfigTbl(void);
 **  \endreturns
 **
 *************************************************************************/
-int32  MAVLINK_ValidateConfigTbl(void*);
+int32  MAVLINK_ValidateParamTbl(void*);
 
 /************************************************************************/
 /** \brief Obtain MAVLINK Config Table Data Pointer
@@ -90,7 +90,7 @@ int32  MAVLINK_ValidateConfigTbl(void*);
 **  \endreturns
 **
 *************************************************************************/
-int32 MAVLINK_AcquireConfigPointers(void);
+int32 MAVLINK_AcquireParamPointers(void);
 
 /************************************************************************/
 /** \brief Process new MAVLINK Config table

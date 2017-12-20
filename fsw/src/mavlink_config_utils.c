@@ -53,7 +53,7 @@ int32 MAVLINK_InitParamTbl()
                                MAVLINK_PARAM_TABLENAME,
                                (sizeof(MAVLINK_ParamTblEntry_t) * MAVLINK_PARAM_TABLE_MAX_ENTRIES),
                                CFE_TBL_OPT_DEFAULT,
-                               MAVLINK_ValidateConfigTbl);
+							   MAVLINK_ValidateParamTbl);
     if (iStatus != CFE_SUCCESS)
     {
         /* Note, a critical table could return another nominal code.  If this table is
@@ -78,7 +78,7 @@ int32 MAVLINK_InitParamTbl()
         goto MAVLINK_InitConfigTbl_Exit_Tag;
     }
 
-    iStatus = MAVLINK_AcquireConfigPointers();
+    iStatus = MAVLINK_AcquireParamPointers();
 
 MAVLINK_InitConfigTbl_Exit_Tag:
     return (iStatus);
@@ -87,11 +87,11 @@ MAVLINK_InitConfigTbl_Exit_Tag:
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                 */
-/* Validate Config Table                                           */
+/* Validate Param Table                                           */
 /*                                                                 */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-int32 MAVLINK_ValidateConfigTbl(void* ConfigTblPtr)
+int32 MAVLINK_ValidateParamTbl(void* ConfigTblPtr)
 {
     int32  iStatus=0;
     MAVLINK_ParamTblEntry_t* MAVLINK_ConfigTblPtr = (MAVLINK_ParamTblEntry_t*)(ConfigTblPtr);
@@ -99,7 +99,7 @@ int32 MAVLINK_ValidateConfigTbl(void* ConfigTblPtr)
     if (ConfigTblPtr == NULL)
     {
         iStatus = -1;
-        goto MAVLINK_ValidateConfigTbl_Exit_Tag;
+        goto MAVLINK_ValidateParamTbl_Exit_Tag;
     }
 
     /* TODO:  Add code to validate new data values here.
@@ -112,7 +112,7 @@ int32 MAVLINK_ValidateConfigTbl(void* ConfigTblPtr)
     ** }
     **/
 
-MAVLINK_ValidateConfigTbl_Exit_Tag:
+MAVLINK_ValidateParamTbl_Exit_Tag:
     return (iStatus);
 }
 
@@ -139,7 +139,7 @@ void MAVLINK_ProcessNewConfigTbl()
 /* Acquire Conifg Pointers                                         */
 /*                                                                 */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-int32 MAVLINK_AcquireConfigPointers(void)
+int32 MAVLINK_AcquireParamPointers(void)
 {
     int32 iStatus = CFE_SUCCESS;
 
