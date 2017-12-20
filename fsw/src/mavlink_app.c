@@ -466,6 +466,13 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 			MAVLINK_SendParamsToQGC();
 			break;
 		}
+		case MAVLINK_MSG_ID_PARAM_REQUEST_READ:
+		{
+			mavlink_param_request_read_t decodedMsg;
+			mavlink_msg_param_request_read_decode(&msg, &decodedMsg);
+			OS_printf("QGC requseting specified param at index: %i\n", decodedMsg.param_index);
+			break;
+		}
 		case MAVLINK_MSG_ID_COMMAND_LONG:
 		{
 			OS_printf("Recieved command long\n");
