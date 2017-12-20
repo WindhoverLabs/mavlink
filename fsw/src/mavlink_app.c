@@ -347,7 +347,7 @@ int32 MAVLINK_InitChildTasks(void)
 {
     int32 Status = CFE_SUCCESS;
 
-    MAVLINK_AppData.IngestActive = TRUE;
+    MAVLINK_EnableConnection(); //TODO: REMOVE ME
 
 	Status= CFE_ES_CreateChildTask(&MAVLINK_AppData.ListenerTaskID,
 								   MAVLINK_LISTENER_TASK_NAME,
@@ -374,26 +374,16 @@ MAVLINK_InitListenerTask_Exit_Tag:
     return Status;
 }
 
-void printMsg(mavlink_message_t *msg)
+void MAVLINK_EnableConnection()
 {
-    OS_printf("magic = %i\n", msg->magic );
-    OS_printf("len = %i\n", msg->len );
-    OS_printf("seq = %i\n", msg->seq );
-    OS_printf("sysid = %i\n", msg->sysid );
-    OS_printf("compid = %i\n", msg->compid );
-    OS_printf("msgid = %i\n", msg->msgid );
-    //OS_printf("payload = %i", msg->paload );
-    OS_printf("checksum = %i\n\n", msg->checksum );
+	MAVLINK_AppData.HeartbeatActive = TRUE;
+	MAVLINK_AppData.IngestActive = TRUE;
 }
 
-void printHrt(mavlink_heartbeat_t *msg)
+void MAVLINK_DisableConnection()
 {
-    OS_printf("type = %u\n", msg->type );
-    OS_printf("autopilot = %u\n", msg->autopilot );
-    OS_printf("base_mode = %u\n", msg->base_mode );
-    OS_printf("custom_mode = %u\n", msg->custom_mode );
-    OS_printf("system_status = %u\n", msg->system_status );
-    OS_printf("mavlink_version = %u\n", msg->mavlink_version );
+	MAVLINK_AppData.HeartbeatActive = FALSE;
+	MAVLINK_AppData.IngestActive = FALSE;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -401,33 +391,30 @@ void printHrt(mavlink_heartbeat_t *msg)
 /* Child Task Listener Main		                                   */
 /*                                                                 */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
 void MAVLINK_ListenerTaskMain(void)
 {
 	int32 Status = -1;
 	mavlink_message_t msg;
 	mavlink_status_t msg_status;
-	int32 index = 0;
-    uint32 MsgSize = MAVLINK_MAX_PACKET_LEN;
+    uint32 msg_size = MAVLINK_MAX_PACKET_LEN;
 
 	Status = CFE_ES_RegisterChildTask();
 	if (Status == CFE_SUCCESS)
 	{
 		/* Ingest Loop */
 		do{
-			//OS_printf("\nIn MAVLINK ingest loop\n");
-
 			/* Receive mavlink message */
-			MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &MsgSize);
+			MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &msg_size);
 
-			if(MsgSize == -1)
+			/* Verify message length. If equal to -1 there is no data on the socket */
+			if(msg_size == -1)
 			{
-				MsgSize = MAVLINK_MAX_PACKET_LEN;
+				msg_size = MAVLINK_MAX_PACKET_LEN;
 				continue;
 			}
 
 			/* Decode the message */
-			for (index = 0; index < MsgSize; ++index)
+			for (int index = 0; index < msg_size; ++index)
 			{
 				if (mavlink_parse_char(MAVLINK_COMM_0, MAVLINK_AppData.IngestBuffer[index], &msg, &msg_status))
 				{
@@ -478,19 +465,13 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 			OS_printf("Recieved command long\n");
 			mavlink_command_long_t 		decodedMsg;
 			mavlink_msg_command_long_decode(&msg, &decodedMsg);
-			//MAVLINK_ProcessHeartbeat(decodedMsg);
 			break;
 		}
-
-
-
 		default:
 			OS_printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", msg.sysid, msg.compid, msg.len, msg.msgid);
 			break;
 	}
-//	OS_printf("\n");
 }
-
 
 void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat)
 {
@@ -506,9 +487,7 @@ void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat)
 	{
 		OS_printf("Found UNKNOWN heartbeat\n");
 	}
-//	printHrt(&heartbeat);
 }
-
 
 void MAVLINK_SendHeartbeat(void)
 {
@@ -523,11 +502,14 @@ void MAVLINK_SendHeartbeat(void)
 	uint16 msg_size 		= 0;
 	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
 
-	mavlink_msg_heartbeat_pack(system_id, component_id, &msg, type,
-										 autopilot, base_mode, custom_mode, system_status);
-	msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
+	if (MAVLINK_AppData.HeartbeatActive == TRUE)
+	{
+		mavlink_msg_heartbeat_pack(system_id, component_id, &msg, type,
+											 autopilot, base_mode, custom_mode, system_status);
+		msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
 
-    MAVLINK_SendMessage((char *) &msgBuf, msg_size);
+		MAVLINK_SendMessage((char *) &msgBuf, msg_size);
+	}
 }
 
 void MAVLINK_SendToQGC(void) //DEBUG ONLY
@@ -579,13 +561,11 @@ void MAVLINK_SendToQGC(void) //DEBUG ONLY
 
 void MAVLINK_SendParamsToQGC(void)
 {
-	//OS_printf("Sending heartbeat\n");
 	uint32 i =0;
 	uint16 msg_size 		= 0;
 	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
 	mavlink_param_value_t param_value_msg = {0};
 	mavlink_message_t msg 	= {0};
-
 
 	/* Iterate over table and send each parameter */
 	for(i = 0; i < MAVLINK_PARAM_TABLE_MAX_ENTRIES; ++i)
@@ -1045,7 +1025,6 @@ void MAVLINK_AppMain()
         */
         MAVLINK_UpdateCdsTbl();
         MAVLINK_SaveCdsTbl();
-        //MAVLINK_SendHeartbeat();
         iStatus = MAVLINK_AcquireConfigPointers();
         if(iStatus != CFE_SUCCESS)
         {
