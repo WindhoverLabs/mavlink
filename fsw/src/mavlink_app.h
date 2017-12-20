@@ -335,8 +335,6 @@ void MAVLINK_MessageRouter(mavlink_message_t msg);
 void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat);
 void MAVLINK_SendHeartbeat(void);
 void MAVLINK_SendParamsToGCS(void);
-void MAVLINK_AddParam(MAVLINK_ParamData_t param);
-void MAVLINK_SetParam(MAVLINK_SetParamCmd_t* SetParamMsg);
 
 #ifdef __cplusplus
 }

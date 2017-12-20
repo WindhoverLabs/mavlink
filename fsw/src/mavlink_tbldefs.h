@@ -46,7 +46,7 @@ typedef struct
 	uint8 vehicle_id;
 	uint8 component_id;
 	MAVLINK_ParamData_t param_data;
-} MAVLINK_ParamTblData_t;
+} MAVLINK_ParamTblData_t; // TODO change to cmd data
 
 /** \brief Definition for a single config table entry */
 typedef struct

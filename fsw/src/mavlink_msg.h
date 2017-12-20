@@ -162,26 +162,6 @@ typedef struct
     uint16 param_index;
 } MAVLINK_ParamData_t;
 
-/**
-**  \brief MAVLINK parameter broadcast
-*/
-typedef struct
-{
-	uint8  ucCmdHeader[CFE_SB_CMD_HDR_SIZE];
-	char name[MAVLINK_MSG_PARAM_NAME_LEN];
-	uint16 param_index;
-} MAVLINK_GetParamCmd_t;
-
-/**
-**  \brief MAVLINK parameter broadcast
-*/
-typedef struct
-{
-	uint8  ucCmdHeader[CFE_SB_CMD_HDR_SIZE];
-	MAVLINK_ParamData_t param_data;
-} MAVLINK_SetParamCmd_t;
-
-
 #ifdef __cplusplus
 }
 #endif

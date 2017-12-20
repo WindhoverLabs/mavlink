@@ -624,49 +624,7 @@ void MAVLINK_SendParamsToSB(void)
 
 }
 
-void MAVLINK_AddParam(MAVLINK_ParamData_t param)
-{
-	/* Iterate over table to find first empty index */
-	for(int i = 0; i < MAVLINK_PARAM_TABLE_MAX_ENTRIES; ++i)
-	{
-		if (MAVLINK_AppData.ParamTblPtr->params[i].enabled == 0)
-		{
-			/* Update parameter message with current table index values */
-			MAVLINK_AppData.ParamTblPtr->params[i].enabled = 1;
-			MAVLINK_AppData.ParamTblPtr->params[i].param_data.value = param.value;
-			memcpy(MAVLINK_AppData.ParamTblPtr->params[i].param_data.name, param.name,
-					sizeof(param.name)); //need to clear string?
-			MAVLINK_AppData.ParamTblPtr->params[i].param_data.type = param.type;
-		}
-	}
-}
 
-
-void MAVLINK_SetParam(MAVLINK_SetParamCmd_t* SetParamMsg)
-{
-	boolean paramExists = FALSE;
-
-	/* Iterate over table to find parameter */
-	for(int i = 0; i < MAVLINK_PARAM_TABLE_MAX_ENTRIES; ++i)
-	{
-		/* Only check enabled parameters */
-		if (MAVLINK_AppData.ParamTblPtr->params[i].enabled == 1)
-		{
-			if (strcmp(SetParamMsg->param_data.name, MAVLINK_AppData.ParamTblPtr->params[i].param_data.name))
-			{
-				/* Update parameter message with current table index values */
-				paramExists = TRUE;
-				MAVLINK_AppData.ParamTblPtr->params[i].param_data.value = SetParamMsg->param_data.value;
-				MAVLINK_AppData.ParamTblPtr->params[i].param_data.type = SetParamMsg->param_data.type;
-			}
-		}
-	}
-
-	if (!paramExists)
-	{
-		MAVLINK_AddParam(SetParamMsg->param_data);
-	}
-}
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                 */
@@ -890,7 +848,7 @@ void MAVLINK_ProcessNewAppCmds(CFE_SB_Msg_t* MsgPtr)
 				break;
 
             case MAVLINK_SET_PARAM_CC:
-            	MAVLINK_SetParam((MAVLINK_SetParamCmd_t *) MsgPtr);
+            	//MAVLINK_SetParam((MAVLINK_SetParamCmd_t *) MsgPtr);
             	break;
 
             default:
