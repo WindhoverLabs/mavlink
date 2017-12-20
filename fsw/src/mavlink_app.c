@@ -611,7 +611,7 @@ void MAVLINK_SendParamsToSB(void)
 			//ParamValueMsg.param_type = MAVLINK_AppData.ParamTblPtr->params[i].type; // TODO need this?
 
 			/* Init Airliner message and send to SB */
-			CFE_SB_InitMsg(&ParamValueMsg, MAVLINK_PARAM_VALUE_MID, sizeof(MAVLINK_ParamData_t), FALSE);
+			//CFE_SB_InitMsg(&ParamValueMsg, MAVLINK_PARAM_VALUE_MID, sizeof(MAVLINK_ParamData_t), FALSE);
 			CmdMsgPtr = (CFE_SB_MsgPtr_t)&ParamValueMsg;
 
 			Status = CFE_SB_SendMsg(CmdMsgPtr);
