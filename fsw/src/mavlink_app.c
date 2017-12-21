@@ -154,7 +154,8 @@ int32 MAVLINK_InitPipe()
         }
 
         /* Subscribe to param app messages */
-		iStatus = CFE_SB_Subscribe(PARAMS_PARAM_MID, MAVLINK_AppData.CmdPipeId);
+		iStatus = CFE_SB_SubscribeEx(PARAMS_PARAM_MID, MAVLINK_AppData.CmdPipeId, CFE_SB_Default_Qos,
+                						(uint16)MAVLINK_CMD_PIPE_DEPTH);
 
 		if (iStatus != CFE_SUCCESS)
 		{
@@ -178,11 +179,16 @@ int32 MAVLINK_InitPipe()
                                  MAVLINK_DATA_PIPE_NAME);
     if (iStatus == CFE_SUCCESS)
     {
-        /* TODO:  Add CFE_SB_Subscribe() calls for other apps' output data here.
-        **
-        ** Examples:
-        **     CFE_SB_Subscribe(GNCEXEC_OUT_DATA_MID, MAVLINK_AppData.DataPipeId);
-        */
+    	/* Subscribe to param app messages */
+		iStatus = CFE_SB_Subscribe(PARAMS_HK_TLM_MID, MAVLINK_AppData.DataPipeId);
+
+		if (iStatus != CFE_SUCCESS)
+		{
+			(void) CFE_EVS_SendEvent(MAVLINK_INIT_ERR_EID, CFE_EVS_ERROR,
+									 "DATA Pipe failed to subscribe to PARAMS_HK_TLM_MID. (0x%08X)",
+									 (unsigned int)iStatus);
+			goto MAVLINK_InitPipe_Exit_Tag;
+		}
     }
     else
     {
@@ -359,7 +365,7 @@ int32 MAVLINK_InitChildTasks(void)
 {
     int32 Status = CFE_SUCCESS;
 
-    MAVLINK_EnableConnection(); //TODO: REMOVE ME
+    //MAVLINK_EnableConnection(); //TODO: REMOVE ME
 
 	Status= CFE_ES_CreateChildTask(&MAVLINK_AppData.ListenerTaskID,
 								   MAVLINK_LISTENER_TASK_NAME,
@@ -481,6 +487,12 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 			mavlink_msg_command_long_decode(&msg, &decodedMsg);
 			break;
 		}
+		case MAVLINK_MSG_ID_MISSION_REQUEST_LIST :
+		{
+			OS_printf("QGC requseting mission list\n");
+
+			break;
+		}
 		default:
 			OS_printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", msg.sysid, msg.compid, msg.len, msg.msgid);
 			break;
@@ -510,6 +522,27 @@ int32 MAVLINK_HandleRequestParams()
 	return Status;
 }
 
+int32 MAVLINK_HandleRequestMission()
+{
+	int32 Status = CFE_SUCCESS;
+	mavlink_mission_count_t missionMsg;
+	mavlink_message_t msg 	= {0};
+	uint16 msg_size 		= 0;
+	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
+
+	/* Reply with mission count zero for now */
+	missionMsg.count = 0;
+	missionMsg.target_system = MAVLINK_PARAM_SYSTEM_ID;
+	missionMsg.target_component = MAVLINK_PARAM_COMPONENT_ID;
+
+	/* Encode mavlink message and send to ground station */
+	mavlink_msg_mission_count_encode(MAVLINK_PARAM_SYSTEM_ID, MAVLINK_PARAM_COMPONENT_ID, &msg, &missionMsg);
+	msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
+	MAVLINK_SendMessage((char *) &msgBuf, msg_size);
+
+	return Status;
+}
+
 void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat)
 {
 	if(heartbeat.type == MAV_TYPE_GCS)
@@ -524,6 +557,19 @@ void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat)
 	{
 		OS_printf("Found UNKNOWN heartbeat\n");
 	}
+}
+
+void MAVLINK_CheckParamsInit(PARAMS_HkTlm_t* ParamsHkPtr)
+{
+	if(ParamsHkPtr->ParamsInitialized == TRUE)
+	{
+		MAVLINK_EnableConnection();
+	}
+//	else
+//	{
+//		OS_printf("Disabling\n");
+//		MAVLINK_DisableConnection();
+//	}
 }
 
 void MAVLINK_SendHeartbeat(void)
@@ -564,12 +610,20 @@ void MAVLINK_SendParamToQGC(PARAMS_SendParamDataCmd_t* MsgPtr)
 	memcpy(&param.param_id, param_data.name, sizeof(param_data.name));
 	param.param_type = param_data.type;
 
+	OS_printf("Param count in sb: %u \n", MsgPtr->param_count);
+	OS_printf("Param index in sb: %u \n", MsgPtr->param_index);
+	OS_printf("Param value in sb: %f \n", param_data.value);
+	OS_printf("Param type in sb: %u \n", param_data.type);
+
+	OS_printf("Param count in mavlink: %u \n", param.param_count);
+	OS_printf("Param index in mavlink: %u \n", param.param_index);
+	OS_printf("Param value in mavlink: %f \n", param.param_value);
+	OS_printf("Param type in mavlink: %u \n", param.param_type);
+
 	/* Encode mavlink message and send to ground station */
 	mavlink_msg_param_value_encode(MAVLINK_PARAM_SYSTEM_ID, MAVLINK_PARAM_COMPONENT_ID, &msg, &param);
 	msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
     MAVLINK_SendMessage((char *) &msgBuf, msg_size);
-
-    OS_printf("Mavlink sent param to QGC\n");
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -594,7 +648,7 @@ void MAVLINK_ProcessNewParamCmds(CFE_SB_Msg_t* MsgPtr)
                                   "Recvd param data to route to GCS");
 
                 /* Encode param into mavlink and send */
-                MAVLINK_SendParamToQGC((PARAMS_SendParamDataCmd_t *) MsgPtr);
+                MAVLINK_SendParamToQGC(MsgPtr);
                 break;
 
             default:
@@ -704,13 +758,10 @@ void MAVLINK_ProcessNewData()
             DataMsgId = CFE_SB_GetMsgId(DataMsgPtr);
             switch (DataMsgId)
             {
-                /* TODO:  Add code to process all subscribed data here
-                **
-                ** Example:
-                **     case NAV_OUT_DATA_MID:
-                **         MAVLINK_ProcessNavData(DataMsgPtr);
-                **         break;
-                */
+            	case PARAMS_HK_TLM_MID:
+            		MAVLINK_CheckParamsInit((PARAMS_HkTlm_t *) DataMsgPtr);
+            		break;
+
 
                 default:
                     (void) CFE_EVS_SendEvent(MAVLINK_MSGID_ERR_EID, CFE_EVS_ERROR,

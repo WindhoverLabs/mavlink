@@ -102,6 +102,8 @@ typedef struct
     /** \brief Housekeeping Telemetry for downlink */
     MAVLINK_HkTlm_t  HkTlm;
 
+    boolean ParamsInitialized;
+
 } MAVLINK_AppData_t;
 
 /************************************************************************
