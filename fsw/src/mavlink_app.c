@@ -589,43 +589,6 @@ void MAVLINK_SendParamsToGCS(void)
 
 }
 
-void MAVLINK_SendParamsToSB(void)
-{
-	int32 Status;
-	uint32 i =0;
-	uint16 msg_size 		= 0;
-	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
-	MAVLINK_ParamData_t ParamValueMsg = {0};
-	CFE_SB_MsgPtr_t 	CmdMsgPtr;
-
-
-	/* Iterate over table and send each parameter */
-	for(i = 0; i < MAVLINK_PARAM_TABLE_MAX_ENTRIES; ++i)
-	{
-		if (MAVLINK_AppData.ParamTblPtr->params[i].enabled == 1)
-		{
-			/* Update parameter message with current table index values */
-			ParamValueMsg.value = MAVLINK_AppData.ParamTblPtr->params[i].param_data.value;
-			memcpy(ParamValueMsg.name, MAVLINK_AppData.ParamTblPtr->params[i].param_data.name,
-					sizeof(MAVLINK_AppData.ParamTblPtr->params[i].param_data.name));
-			//ParamValueMsg.param_type = MAVLINK_AppData.ParamTblPtr->params[i].type; // TODO need this?
-
-			/* Init Airliner message and send to SB */
-			//CFE_SB_InitMsg(&ParamValueMsg, MAVLINK_PARAM_VALUE_MID, sizeof(MAVLINK_ParamData_t), FALSE);
-			CmdMsgPtr = (CFE_SB_MsgPtr_t)&ParamValueMsg;
-
-			Status = CFE_SB_SendMsg(CmdMsgPtr);
-			if (Status != CFE_SUCCESS)
-			{
-				/* TODO: Decide what to do if the send message fails. */
-			}
-		}
-	}
-
-}
-
-
-
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                 */
 /* Receive and Process Messages                                    */
