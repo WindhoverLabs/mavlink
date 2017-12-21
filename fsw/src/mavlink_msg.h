@@ -149,18 +149,15 @@ typedef struct
         \brief Count of failed commands */
     uint8              usCmdErrCnt; 
 
-} MAVLINK_HkTlm_t;
+    /** \mavlinktlmmnemonic \MAVLINK_CMDACPTCNT
+        \brief Count of accepted commands */
+    uint8              paramCmdCnt;
 
-/**
-**  \brief MAVLINK parameter broadcast
-*/
-typedef struct
-{
-	char name[MAVLINK_MSG_PARAM_NAME_LEN];
-    float value;
-    uint8 type;
-    uint16 param_index;
-} MAVLINK_ParamData_t;
+    /** \mavlinktlmmnemonic \MAVLINK_CMDRJCTCNT
+        \brief Count of failed commands */
+    uint8              paramCmdErrCnt;
+
+} MAVLINK_HkTlm_t;
 
 #ifdef __cplusplus
 }

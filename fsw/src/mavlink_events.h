@@ -197,6 +197,8 @@ typedef enum {
 
 	MAVLINK_LISTENER_CREATE_CHDTASK_ERR_EID,
 
+	MAVLINK_HANDLE_ERR_EID,
+
 
 /** \brief <tt> This is a count of all the app events and should not be used. </tt> */
     MAVLINK_EVT_CNT

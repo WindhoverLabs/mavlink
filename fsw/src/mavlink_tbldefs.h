@@ -11,7 +11,7 @@
 *************************************************************************/
 #include "cfe.h"
 #include "mavlink_platform_cfg.h"
-#include "mavlink_msg.h"
+#include "params_data.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,7 +45,7 @@ typedef struct
 	uint8 enabled;
 	uint8 vehicle_id;
 	uint8 component_id;
-	MAVLINK_ParamData_t param_data;
+	PARAMS_ParamData_t param_data;
 } MAVLINK_ParamTblData_t; // TODO change to cmd data
 
 /** \brief Definition for a single config table entry */

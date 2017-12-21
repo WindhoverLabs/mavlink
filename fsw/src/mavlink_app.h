@@ -336,6 +336,8 @@ void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat);
 void MAVLINK_SendHeartbeat(void);
 void MAVLINK_SendParamsToGCS(void);
 
+int32 MAVLINK_HandleRequestParams();
+
 #ifdef __cplusplus
 }
 #endif 
