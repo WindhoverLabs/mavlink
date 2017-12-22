@@ -648,6 +648,7 @@ void MAVLINK_ProcessNewParamCmds(CFE_SB_Msg_t* MsgPtr)
                                   "Recvd param data to route to GCS");
 
                 /* Encode param into mavlink and send */
+                //PARAMS_SendParamDataCmd_t* cmd = (PARAMS_SendParamDataCmd_t *)CFE_SB_GetUserData(MsgPtr);
                 MAVLINK_SendParamToQGC(MsgPtr);
                 break;
 
