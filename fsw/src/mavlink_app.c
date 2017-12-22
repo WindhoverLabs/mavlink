@@ -595,7 +595,7 @@ void MAVLINK_SendHeartbeat(void)
 	}
 }
 
-void MAVLINK_SendParamToQGC(PARAMS_SendParamDataCmd_t* MsgPtr)
+void MAVLINK_SendParamToGCS(PARAMS_SendParamDataCmd_t* MsgPtr)
 {
 	mavlink_message_t msg 	= {0};
 	mavlink_param_value_t param = {0};
@@ -609,16 +609,6 @@ void MAVLINK_SendParamToQGC(PARAMS_SendParamDataCmd_t* MsgPtr)
 	param.param_value = param_data.value;
 	memcpy(&param.param_id, param_data.name, sizeof(param_data.name));
 	param.param_type = param_data.type;
-
-	OS_printf("Param count in sb: %u \n", MsgPtr->param_count);
-	OS_printf("Param index in sb: %u \n", MsgPtr->param_index);
-	OS_printf("Param value in sb: %f \n", param_data.value);
-	OS_printf("Param type in sb: %u \n", param_data.type);
-
-	OS_printf("Param count in mavlink: %u \n", param.param_count);
-	OS_printf("Param index in mavlink: %u \n", param.param_index);
-	OS_printf("Param value in mavlink: %f \n", param.param_value);
-	OS_printf("Param type in mavlink: %u \n", param.param_type);
 
 	/* Encode mavlink message and send to ground station */
 	mavlink_msg_param_value_encode(MAVLINK_PARAM_SYSTEM_ID, MAVLINK_PARAM_COMPONENT_ID, &msg, &param);
@@ -644,12 +634,11 @@ void MAVLINK_ProcessNewParamCmds(CFE_SB_Msg_t* MsgPtr)
         	/* If params is sending param data route to GCS */
             case PARAMS_PARAM_DATA_CC:
                 MAVLINK_AppData.HkTlm.paramCmdCnt++;
-                (void) CFE_EVS_SendEvent(MAVLINK_CMD_INF_EID, CFE_EVS_INFORMATION,
-                                  "Recvd param data to route to GCS");
+//                (void) CFE_EVS_SendEvent(MAVLINK_CMD_INF_EID, CFE_EVS_INFORMATION,
+//                                  "Recvd param data to route to GCS");
 
                 /* Encode param into mavlink and send */
-                //PARAMS_SendParamDataCmd_t* cmd = (PARAMS_SendParamDataCmd_t *)CFE_SB_GetUserData(MsgPtr);
-                MAVLINK_SendParamToQGC(MsgPtr);
+                MAVLINK_SendParamToGCS(MsgPtr);
                 break;
 
             default:
