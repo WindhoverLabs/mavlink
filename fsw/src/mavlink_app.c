@@ -9,11 +9,12 @@
 #include <string.h>
 
 #include "cfe.h"
-#include "params_data.h"
 
 #include "mavlink_version.h"
 #include "mavlink_app.h"
 #include "mavlink_msg.h"
+#include "params_platform_cfg.h"
+#include "params_msg.h"
 
 /************************************************************************
 ** Local Defines
@@ -478,19 +479,25 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 			mavlink_param_request_read_t decodedMsg;
 			mavlink_msg_param_request_read_decode(&msg, &decodedMsg);
 			OS_printf("QGC requseting specified param at index: %i\n", decodedMsg.param_index);
+			MAVLINK_HandleRequestParamRead(decodedMsg);
 			break;
 		}
 		case MAVLINK_MSG_ID_COMMAND_LONG:
 		{
-			OS_printf("Recieved command long\n");
+			//OS_printf("Recieved command long\n");
 			mavlink_command_long_t 		decodedMsg;
 			mavlink_msg_command_long_decode(&msg, &decodedMsg);
 			break;
 		}
-		case MAVLINK_MSG_ID_MISSION_REQUEST_LIST :
+		case MAVLINK_MSG_ID_MISSION_REQUEST_LIST:
 		{
 			OS_printf("QGC requseting mission list\n");
-
+			MAVLINK_HandleRequestMission();
+			break;
+		}
+		case MAVLINK_MSG_ID_MISSION_ACK:
+		{
+			OS_printf("QGC ACK mission list\n");
 			break;
 		}
 		default:
@@ -511,14 +518,30 @@ int32 MAVLINK_HandleRequestParams()
 	CFE_SB_MsgPtr_t 	CmdMsgPtr;
 	MAVLINK_NoArgCmd_t  msg;
 
-	/* Check if params app ready to broadcast */
-
-
 	/* Signal params app to send all params */
-	CFE_SB_InitMsg(&msg, MAVLINK_REQUEST_PARAMS_MID, sizeof(MAVLINK_NoArgCmd_t), FALSE);
+	CFE_SB_InitMsg(&msg, PARAMS_CMD_MID, sizeof(MAVLINK_NoArgCmd_t), FALSE);
 	CmdMsgPtr = (CFE_SB_MsgPtr_t)&msg;
+	CFE_SB_SetCmdCode(CmdMsgPtr, PARAMS_REQUEST_ALL_CC);
 	Status = CFE_SB_SendMsg(CmdMsgPtr);
 
+	return Status;
+}
+
+int32 MAVLINK_HandleRequestParamRead(mavlink_param_request_read_t paramMsg)
+{
+	int32 				Status;
+	CFE_SB_MsgPtr_t 	CmdMsgPtr;
+	MAVLINK_NoArgCmd_t  msg;
+	PARAMS_RequestParamDataCmd_t requestCmd;
+
+	requestCmd.param_index = paramMsg.param_index;
+	memcpy(requestCmd.name, paramMsg.param_id, sizeof(MAVLINK_MSG_PARAM_REQUEST_READ_FIELD_PARAM_ID_LEN));
+
+	/* Signal params app to send specified cmd */
+	CFE_SB_InitMsg(&msg, PARAMS_CMD_MID, sizeof(MAVLINK_NoArgCmd_t), FALSE);
+	CmdMsgPtr = (CFE_SB_MsgPtr_t)&msg;
+	CFE_SB_SetCmdCode(CmdMsgPtr, PARAMS_REQUEST_PARAM_CC);
+	Status = CFE_SB_SendMsg(CmdMsgPtr);
 	return Status;
 }
 
@@ -539,7 +562,6 @@ int32 MAVLINK_HandleRequestMission()
 	mavlink_msg_mission_count_encode(MAVLINK_PARAM_SYSTEM_ID, MAVLINK_PARAM_COMPONENT_ID, &msg, &missionMsg);
 	msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
 	MAVLINK_SendMessage((char *) &msgBuf, msg_size);
-
 	return Status;
 }
 
@@ -547,7 +569,7 @@ void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat)
 {
 	if(heartbeat.type == MAV_TYPE_GCS)
 	{
-		OS_printf("Found QGC heartbeat\n");
+		//OS_printf("Found QGC heartbeat\n");
 	}
 	else if(heartbeat.type == MAV_TYPE_OCTOROTOR)
 	{

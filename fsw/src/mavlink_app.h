@@ -339,6 +339,10 @@ void MAVLINK_SendHeartbeat(void);
 void MAVLINK_SendParamsToGCS(void);
 
 int32 MAVLINK_HandleRequestParams();
+int32 MAVLINK_HandleRequestMission();
+int32 MAVLINK_HandleRequestParamRead(mavlink_param_request_read_t paramMsg);
+
+
 
 #ifdef __cplusplus
 }
