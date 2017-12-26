@@ -474,6 +474,14 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 			Status = MAVLINK_HandleRequestParams();
 			break;
 		}
+		case MAVLINK_MSG_ID_PARAM_SET:
+		{
+			OS_printf("QGC setting param\n");
+			mavlink_param_set_t decodedMsg;
+			mavlink_msg_param_set_decode(&msg, &decodedMsg);
+			Status = MAVLINK_HandleSetParam(decodedMsg);
+			break;
+		}
 		case MAVLINK_MSG_ID_PARAM_REQUEST_READ:
 		{
 			mavlink_param_request_read_t decodedMsg;
@@ -522,6 +530,28 @@ int32 MAVLINK_HandleRequestParams()
 	CFE_SB_InitMsg(&msg, PARAMS_CMD_MID, sizeof(MAVLINK_NoArgCmd_t), FALSE);
 	CmdMsgPtr = (CFE_SB_MsgPtr_t)&msg;
 	CFE_SB_SetCmdCode(CmdMsgPtr, PARAMS_REQUEST_ALL_CC);
+	Status = CFE_SB_SendMsg(CmdMsgPtr);
+
+	return Status;
+}
+
+int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
+{
+	int32 				Status;
+	CFE_SB_MsgPtr_t 	CmdMsgPtr;
+	PARAMS_SendParamDataCmd_t  msg;
+
+	/* Copy data to msg */
+	msg.param_data.vehicle_id = param.target_vehicle;
+	msg.param_data.component_id = param.target_component;
+	msg.param_data.value = param.param_value;
+	msg.param_data.type = param.param_type;
+	strcpy(msg.param_data.name, param.param_id);
+
+	/* Signal params app to set param */
+	CFE_SB_InitMsg(&msg, PARAMS_CMD_MID, sizeof(PARAMS_SendParamDataCmd_t), FALSE);
+	CmdMsgPtr = (CFE_SB_MsgPtr_t)&msg;
+	CFE_SB_SetCmdCode(CmdMsgPtr, PARAMS_SET_PARAM_CC);
 	Status = CFE_SB_SendMsg(CmdMsgPtr);
 
 	return Status;
