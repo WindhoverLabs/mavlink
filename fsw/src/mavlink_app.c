@@ -457,7 +457,7 @@ void MAVLINK_ListenerTaskMain(void)
 
 void MAVLINK_MessageRouter(mavlink_message_t msg)
 {
-	int32 	Status;
+	int32 	Status = CFE_SUCCESS;
 
 	switch(msg.msgid)
 	{
@@ -487,7 +487,7 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 			mavlink_param_request_read_t decodedMsg;
 			mavlink_msg_param_request_read_decode(&msg, &decodedMsg);
 			OS_printf("QGC requseting specified param at index: %i\n", decodedMsg.param_index);
-			MAVLINK_HandleRequestParamRead(decodedMsg);
+			Status = MAVLINK_HandleRequestParamRead(decodedMsg);
 			break;
 		}
 		case MAVLINK_MSG_ID_COMMAND_LONG:
@@ -500,7 +500,7 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 		case MAVLINK_MSG_ID_MISSION_REQUEST_LIST:
 		{
 			OS_printf("QGC requseting mission list\n");
-			MAVLINK_HandleRequestMission();
+			Status = MAVLINK_HandleRequestMission();
 			break;
 		}
 		case MAVLINK_MSG_ID_MISSION_ACK:
@@ -522,7 +522,7 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 
 int32 MAVLINK_HandleRequestParams()
 {
-	int32 				Status;
+	int32 				Status = CFE_SUCCESS;
 	CFE_SB_MsgPtr_t 	CmdMsgPtr;
 	MAVLINK_NoArgCmd_t  msg;
 
@@ -537,7 +537,7 @@ int32 MAVLINK_HandleRequestParams()
 
 int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 {
-	int32 				Status;
+	int32 				Status = CFE_SUCCESS;
 	CFE_SB_MsgPtr_t 	CmdMsgPtr;
 	PARAMS_SendParamDataCmd_t  msg;
 
@@ -560,12 +560,17 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 	CFE_SB_SetCmdCode(CmdMsgPtr, PARAMS_SET_PARAM_CC);
 	Status = CFE_SB_SendMsg(CmdMsgPtr);
 
+//	OS_printf("name: %s \n", test->param_data.name);
+//	OS_printf("val: %f \n", test->param_data.value);
+//	OS_printf("type: %u \n", test->param_data.type);
+//	OS_printf("vehicle_id: %u \n", test->param_data.vehicle_id);
+//	OS_printf("component_id: %u \n\n\n", test->param_data.component_id);
 	return Status;
 }
 
 int32 MAVLINK_HandleRequestParamRead(mavlink_param_request_read_t paramMsg)
 {
-	int32 				Status;
+	int32 				Status = CFE_SUCCESS;
 	CFE_SB_MsgPtr_t 	CmdMsgPtr;
 	MAVLINK_NoArgCmd_t  msg;
 	PARAMS_RequestParamDataCmd_t requestCmd;
@@ -660,7 +665,7 @@ void MAVLINK_SendParamToGCS(PARAMS_SendParamDataCmd_t* MsgPtr)
 	uint16 msg_size 		= 0;
 	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
 	PARAMS_ParamData_t param_data = MsgPtr->param_data;
-	OS_printf("Sending param to gcs\n");
+
 	/* Copy values from params msg mavlink msg */
 	param.param_index = MsgPtr->param_index;
 	param.param_count = MsgPtr->param_count;
