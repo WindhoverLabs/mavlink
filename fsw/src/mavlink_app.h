@@ -341,7 +341,7 @@ void MAVLINK_SendParamsToGCS(void);
 int32 MAVLINK_HandleRequestParams();
 int32 MAVLINK_HandleRequestMission();
 int32 MAVLINK_HandleRequestParamRead(mavlink_param_request_read_t paramMsg);
-
+int32 MAVLINK_HandleSetParam(mavlink_param_set_t param);
 
 
 #ifdef __cplusplus

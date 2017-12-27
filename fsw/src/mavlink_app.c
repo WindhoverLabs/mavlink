@@ -542,11 +542,17 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 	PARAMS_SendParamDataCmd_t  msg;
 
 	/* Copy data to msg */
-	msg.param_data.vehicle_id = param.target_vehicle;
+	msg.param_data.vehicle_id = param.target_system;
 	msg.param_data.component_id = param.target_component;
 	msg.param_data.value = param.param_value;
 	msg.param_data.type = param.param_type;
 	strcpy(msg.param_data.name, param.param_id);
+
+	OS_printf("name: %s \n", param.param_id);
+	OS_printf("val: %f \n", param.param_value);
+	OS_printf("type: %u \n", param.param_type);
+	OS_printf("vehicle_id: %u \n", param.target_system);
+	OS_printf("component_id: %u \n", param.target_component);
 
 	/* Signal params app to set param */
 	CFE_SB_InitMsg(&msg, PARAMS_CMD_MID, sizeof(PARAMS_SendParamDataCmd_t), FALSE);
@@ -654,7 +660,7 @@ void MAVLINK_SendParamToGCS(PARAMS_SendParamDataCmd_t* MsgPtr)
 	uint16 msg_size 		= 0;
 	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
 	PARAMS_ParamData_t param_data = MsgPtr->param_data;
-
+	OS_printf("Sending param to gcs\n");
 	/* Copy values from params msg mavlink msg */
 	param.param_index = MsgPtr->param_index;
 	param.param_count = MsgPtr->param_count;
@@ -694,9 +700,6 @@ void MAVLINK_ProcessNewParamCmds(CFE_SB_Msg_t* MsgPtr)
                 break;
 
             default:
-                MAVLINK_AppData.HkTlm.usCmdErrCnt++;
-                (void) CFE_EVS_SendEvent(MAVLINK_MSGID_ERR_EID, CFE_EVS_ERROR,
-                                  "Recvd invalid cmdId (%u)", (unsigned int)uiCmdCode);
                 break;
         }
     }
