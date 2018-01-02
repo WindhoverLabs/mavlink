@@ -66,10 +66,10 @@ typedef struct
     /* Config table-related */
 
     /** \brief Param Table Handle */
-    CFE_TBL_Handle_t  ParamTblHdl;
+    CFE_TBL_Handle_t  ActionMapHdl;
 
     /** \brief Param Table Pointer */
-    MAVLINK_ParamTblEntry_t*  ParamTblPtr;
+    MAVLINK_ActionMapTblEntry_t*  ActionMapPtr;
 
     /* Critical Data Storage (CDS) table-related */
 
@@ -81,9 +81,6 @@ typedef struct
 
     /** \brief Mavlink cmd ingest flag */
     boolean IngestActive;
-
-    /** \brief Mavlink cmd ingest flag */
-	boolean HeartbeatActive;
 
     /** \brief Buffer for child task cmd ingest */
     uint8           IngestBuffer[MAVLINK_MAX_PACKET_LEN];
@@ -103,6 +100,9 @@ typedef struct
     MAVLINK_HkTlm_t  HkTlm;
 
     boolean ParamsInitialized;
+
+    /** \brief Mutex for Action Map table */
+	uint32          ActionMapMutex;
 
 } MAVLINK_AppData_t;
 
@@ -337,7 +337,7 @@ void MAVLINK_MessageRouter(mavlink_message_t msg);
 void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat);
 void MAVLINK_SendHeartbeat(void);
 void MAVLINK_SendParamsToGCS(void);
-
+MAVLINK_MsgAction_t MAVLINK_GetMessageAction(mavlink_message_t msg);
 int32 MAVLINK_HandleRequestParams();
 int32 MAVLINK_HandleRequestMission();
 int32 MAVLINK_HandleRequestParamRead(mavlink_param_request_read_t paramMsg);

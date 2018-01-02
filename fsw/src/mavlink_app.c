@@ -353,7 +353,7 @@ void MAVLINK_CleanupCallback()
 {
 	MAVLINK_CleanupCustom();
 	MAVLINK_AppData.IngestActive = FALSE;
-	//OS_MutSemGive(MAVLINK_AppData.ConfigTblMutex);
+	OS_MutSemGive(MAVLINK_AppData.ActionMapMutex);
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -395,14 +395,34 @@ MAVLINK_InitListenerTask_Exit_Tag:
 
 void MAVLINK_EnableConnection(void)
 {
-	MAVLINK_AppData.HeartbeatActive = TRUE;
+	MAVLINK_AppData.HkTlm.HeartbeatActive = TRUE;
 	MAVLINK_AppData.IngestActive = TRUE;
 }
 
 void MAVLINK_DisableConnection(void)
 {
-	MAVLINK_AppData.HeartbeatActive = FALSE;
+	MAVLINK_AppData.HkTlm.HeartbeatActive = FALSE;
 	MAVLINK_AppData.IngestActive = FALSE;
+}
+
+MAVLINK_MsgAction_t MAVLINK_GetMessageAction(mavlink_message_t msg)
+{
+	MAVLINK_MsgAction_t 	action = ACTION_PASSTHRU;
+
+	/* Lock the mutex */
+	OS_MutSemTake(MAVLINK_AppData.ActionMapMutex);
+
+	/* Search for msg id in action map  */
+	for (int i = 0; i < MAVLINK_ACTION_MAP_ENTRIES; ++i)
+	{
+		if(MAVLINK_AppData.ActionMapPtr->ActionMap[i].MsgId == msg.msgid)
+		{
+			action = MAVLINK_AppData.ActionMapPtr->ActionMap[i].Action;
+			break;
+		}
+	}
+
+	OS_MutSemGive(MAVLINK_AppData.ActionMapMutex);
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -413,9 +433,10 @@ void MAVLINK_DisableConnection(void)
 void MAVLINK_ListenerTaskMain(void)
 {
 	int32 Status = -1;
-	mavlink_message_t msg;
-	mavlink_status_t msg_status;
-    uint32 msg_size = MAVLINK_MAX_PACKET_LEN;
+	mavlink_message_t 		msg;
+	mavlink_status_t 		msg_status;
+    uint32 					msg_size = MAVLINK_MAX_PACKET_LEN;
+    MAVLINK_MsgAction_t		action = ACTION_PASSTHRU;
 
 	Status = CFE_ES_RegisterChildTask();
 	if (Status == CFE_SUCCESS)
@@ -437,8 +458,24 @@ void MAVLINK_ListenerTaskMain(void)
 			{
 				if (mavlink_parse_char(MAVLINK_COMM_0, MAVLINK_AppData.IngestBuffer[index], &msg, &msg_status))
 				{
-					/* Pass to message router */
-					MAVLINK_MessageRouter(msg);
+					action = MAVLINK_GetMessageAction(msg);
+					if(action == ACTION_HANDLE)
+					{
+						/* Pass to message router */
+						MAVLINK_MessageRouter(msg);
+					}
+					else if(action == ACTION_PASSTHRU)
+					{
+						/* Message Pass Thru */
+						MAVLINK_MessagePassThru(msg);
+					}
+					// Default behavior pass thru
+					else
+					{
+						/* Message Pass Thru */
+						MAVLINK_MessagePassThru(msg);
+					}
+
 				}
 			}
 
@@ -453,6 +490,11 @@ void MAVLINK_ListenerTaskMain(void)
 		/* Can't send event or write to syslog because this task isn't registered with the cFE. */
 		OS_printf("MAVLINK Listener Child Task Registration failed!\n");
 	}
+}
+
+void MAVLINK_MessagePassThru(mavlink_message_t msg)
+{
+	//todo
 }
 
 void MAVLINK_MessageRouter(mavlink_message_t msg)
@@ -648,7 +690,7 @@ void MAVLINK_SendHeartbeat(void)
 	uint16 msg_size 		= 0;
 	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
 
-	if (MAVLINK_AppData.HeartbeatActive == TRUE)
+	if (MAVLINK_AppData.HkTlm.HeartbeatActive == TRUE)
 	{
 		mavlink_msg_heartbeat_pack(system_id, component_id, &msg, type,
 											 autopilot, base_mode, custom_mode, system_status);
@@ -697,10 +739,6 @@ void MAVLINK_ProcessNewParamCmds(CFE_SB_Msg_t* MsgPtr)
         	/* If params is sending param data route to GCS */
             case PARAMS_PARAM_DATA_CC:
                 MAVLINK_AppData.HkTlm.paramCmdCnt++;
-//                (void) CFE_EVS_SendEvent(MAVLINK_CMD_INF_EID, CFE_EVS_INFORMATION,
-//                                  "Recvd param data to route to GCS");
-
-                /* Encode param into mavlink and send */
                 MAVLINK_SendParamToGCS(MsgPtr);
                 break;
 
@@ -916,17 +954,10 @@ void MAVLINK_ProcessNewAppCmds(CFE_SB_Msg_t* MsgPtr)
             case MAVLINK_RESET_CC:
                 MAVLINK_AppData.HkTlm.usCmdCnt = 0;
                 MAVLINK_AppData.HkTlm.usCmdErrCnt = 0;
+                MAVLINK_AppData.HkTlm.HeartbeatActive = FALSE;
                 (void) CFE_EVS_SendEvent(MAVLINK_CMD_INF_EID, CFE_EVS_INFORMATION,
                                   "Recvd RESET cmd (%u)", (unsigned int)uiCmdCode);
                 break;
-
-            case MAVLINK_GET_PARAMS_CC:
-            	//MAVLINK_SendParamsToSB();
-				break;
-
-            case MAVLINK_SET_PARAM_CC:
-            	//MAVLINK_SetParam((MAVLINK_SetParamCmd_t *) MsgPtr);
-            	break;
 
             default:
                 MAVLINK_AppData.HkTlm.usCmdErrCnt++;

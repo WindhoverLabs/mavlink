@@ -88,9 +88,6 @@ extern "C" {
 */
 #define MAVLINK_RESET_CC                (1)
 
-#define MAVLINK_GET_PARAMS_CC                (2)
-
-#define MAVLINK_SET_PARAM_CC                (3)
 
 /************************************************************************
 ** Local Structure Declarations
@@ -156,6 +153,8 @@ typedef struct
     /** \mavlinktlmmnemonic \MAVLINK_CMDRJCTCNT
         \brief Count of failed commands */
     uint8              paramCmdErrCnt;
+
+    boolean			   HeartbeatActive;
 
 } MAVLINK_HkTlm_t;
 

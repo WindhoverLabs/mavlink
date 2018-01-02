@@ -73,7 +73,7 @@ int32  MAVLINK_InitParamTbl(void);
 **  \endreturns
 **
 *************************************************************************/
-int32  MAVLINK_ValidateParamTbl(void*);
+int32  MAVLINK_ValidateActionMap(void*);
 
 /************************************************************************/
 /** \brief Obtain MAVLINK Config Table Data Pointer

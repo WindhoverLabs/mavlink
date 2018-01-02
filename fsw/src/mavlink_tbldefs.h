@@ -27,7 +27,7 @@ extern "C" {
 /**
  * \brief Defines the table identification name used for table registration.
  */
-#define MAVLINK_PARAM_TABLENAME          ("PARAM_TBL")
+#define MAVLINK_ACTION_MAP_TABLENAME          ("ACTION_MAP")
 
 /**
  * \brief Defines the table file name used for table registration.
@@ -38,19 +38,26 @@ extern "C" {
 ** Local Structure Declarations
 *************************************************************************/
 
-/** \brief Definition for a single config table entry */
-typedef struct
+/** \brief  */
+typedef enum
 {
-	uint8 enabled;
-	uint8 vehicle_id;
-	uint8 component_id;
-} MAVLINK_ParamTblData_t; // TODO change to cmd data
+	ACTION_PASSTHRU,
+	ACTION_HANDLE
+} MAVLINK_MsgAction_t;
+
 
 /** \brief Definition for a single config table entry */
 typedef struct
 {
-    uint8                   tableID;
-} MAVLINK_ParamTblEntry_t;
+	uint8 				  MsgId;
+	MAVLINK_MsgAction_t   Action;
+} MAVLINK_ActionMapData_t;
+
+/** \brief Definition for a single config table entry */
+typedef struct
+{
+    MAVLINK_ActionMapData_t   ActionMap[MAVLINK_ACTION_MAP_ENTRIES];
+} MAVLINK_ActionMapTblEntry_t;
 
 
 /** \brief Definition for Critical Data Storage (CDS) table entry */
