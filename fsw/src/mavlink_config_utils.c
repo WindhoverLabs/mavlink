@@ -51,7 +51,7 @@ int32 MAVLINK_InitActionMap()
     /* Register Config table */
     iStatus = CFE_TBL_Register(&MAVLINK_AppData.ActionMapHdl,
     						   MAVLINK_ACTION_MAP_TABLENAME,
-                               (sizeof(MAVLINK_ActionMapTblEntry_t) * MAVLINK_ACTION_MAP_ENTRIES),
+                               (sizeof(MAVLINK_ActionMapTbl_t) * MAVLINK_ACTION_MAP_ENTRIES),
                                CFE_TBL_OPT_DEFAULT,
 							   MAVLINK_ValidateActionMap);
     if (iStatus != CFE_SUCCESS)
@@ -94,7 +94,7 @@ MAVLINK_InitConfigTbl_Exit_Tag:
 int32 MAVLINK_ValidateActionMap(void* ConfigTblPtr)
 {
     int32  iStatus=0;
-    MAVLINK_ActionMapTblEntry_t* MAVLINK_ConfigTblPtr = (MAVLINK_ActionMapTblEntry_t*)(ConfigTblPtr);
+    MAVLINK_ActionMapTbl_t* MAVLINK_ConfigTblPtr = (MAVLINK_ActionMapTbl_t*)(ConfigTblPtr);
 
     if (ConfigTblPtr == NULL)
     {

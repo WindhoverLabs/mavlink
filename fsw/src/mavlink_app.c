@@ -422,6 +422,7 @@ MAVLINK_MsgAction_t MAVLINK_GetMessageAction(mavlink_message_t msg)
 		}
 	}
 
+	/* Unlock the mutex */
 	OS_MutSemGive(MAVLINK_AppData.ActionMapMutex);
 }
 
@@ -670,11 +671,11 @@ void MAVLINK_CheckParamsInit(PARAMS_HkTlm_t* ParamsHkPtr)
 	{
 		MAVLINK_EnableConnection();
 	}
-//	else
-//	{
-//		OS_printf("Disabling\n");
-//		MAVLINK_DisableConnection();
-//	}
+	else
+	{
+		// TODO: This causes the connection to toggle enabled
+		//MAVLINK_DisableConnection();
+	}
 }
 
 void MAVLINK_SendHeartbeat(void)

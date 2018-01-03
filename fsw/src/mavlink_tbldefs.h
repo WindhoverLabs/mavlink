@@ -57,7 +57,7 @@ typedef struct
 typedef struct
 {
     MAVLINK_ActionMapData_t   ActionMap[MAVLINK_ACTION_MAP_ENTRIES];
-} MAVLINK_ActionMapTblEntry_t;
+} MAVLINK_ActionMapTbl_t;
 
 
 /** \brief Definition for Critical Data Storage (CDS) table entry */

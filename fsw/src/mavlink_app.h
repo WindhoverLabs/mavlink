@@ -69,7 +69,7 @@ typedef struct
     CFE_TBL_Handle_t  ActionMapHdl;
 
     /** \brief Param Table Pointer */
-    MAVLINK_ActionMapTblEntry_t*  ActionMapPtr;
+    MAVLINK_ActionMapTbl_t*  ActionMapPtr;
 
     /* Critical Data Storage (CDS) table-related */
 
