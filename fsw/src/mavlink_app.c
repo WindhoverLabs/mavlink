@@ -273,7 +273,7 @@ int32 MAVLINK_InitApp()
         goto MAVLINK_InitApp_Exit_Tag;
     }
 
-    iStatus = MAVLINK_InitParamTbl();
+    iStatus = MAVLINK_InitActionMap();
     if (iStatus != CFE_SUCCESS)
     {
         (void) CFE_EVS_SendEvent(MAVLINK_INIT_ERR_EID, CFE_EVS_ERROR,
@@ -366,7 +366,7 @@ int32 MAVLINK_InitChildTasks(void)
 {
     int32 Status = CFE_SUCCESS;
 
-    //MAVLINK_EnableConnection(); //TODO: REMOVE ME
+    MAVLINK_EnableConnection(); //TODO: REMOVE ME
 
 	Status= CFE_ES_CreateChildTask(&MAVLINK_AppData.ListenerTaskID,
 								   MAVLINK_LISTENER_TASK_NAME,
@@ -424,6 +424,8 @@ MAVLINK_MsgAction_t MAVLINK_GetMessageAction(mavlink_message_t msg)
 
 	/* Unlock the mutex */
 	OS_MutSemGive(MAVLINK_AppData.ActionMapMutex);
+
+	return action;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -464,17 +466,20 @@ void MAVLINK_ListenerTaskMain(void)
 					{
 						/* Pass to message router */
 						MAVLINK_MessageRouter(msg);
+						//OS_printf("Handling message\n");
 					}
 					else if(action == ACTION_PASSTHRU)
 					{
 						/* Message Pass Thru */
 						MAVLINK_MessagePassThru(msg);
+						//OS_printf("Pass thru\n");
 					}
 					// Default behavior pass thru
 					else
 					{
 						/* Message Pass Thru */
 						MAVLINK_MessagePassThru(msg);
+						//OS_printf("Def pass thru\n");
 					}
 
 				}
@@ -574,7 +579,7 @@ int32 MAVLINK_HandleRequestParams()
 	CmdMsgPtr = (CFE_SB_MsgPtr_t)&msg;
 	CFE_SB_SetCmdCode(CmdMsgPtr, PARAMS_REQUEST_ALL_CC);
 	Status = CFE_SB_SendMsg(CmdMsgPtr);
-
+	OS_printf("signalling params %i\n", Status);
 	return Status;
 }
 
@@ -720,6 +725,7 @@ void MAVLINK_SendParamToGCS(PARAMS_SendParamDataCmd_t* MsgPtr)
 	mavlink_msg_param_value_encode(MAVLINK_PARAM_SYSTEM_ID, MAVLINK_PARAM_COMPONENT_ID, &msg, &param);
 	msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
     MAVLINK_SendMessage((char *) &msgBuf, msg_size);
+    OS_printf("Send param to gcs\n");
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
