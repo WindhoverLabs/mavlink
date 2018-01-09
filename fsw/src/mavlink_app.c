@@ -375,7 +375,18 @@ int32 MAVLINK_InitChildTasks(void)
 								   MAVLINK_LISTENER_TASK_STACK_SIZE,
 								   MAVLINK_LISTENER_TASK_PRIORITY,
 								   0);
+	if (Status != CFE_SUCCESS)
+	{
+		goto MAVLINK_InitListenerTask_Exit_Tag;
+	}
 
+	Status= CFE_ES_CreateChildTask(&MAVLINK_AppData.ListenerTaskID,
+								   MAVLINK_PASSTHRU_LISTENER_TASK_NAME,
+								   MAVLINK_PassThruListenerTaskMain,
+								   NULL,
+								   MAVLINK_LISTENER_TASK_STACK_SIZE,
+								   MAVLINK_LISTENER_TASK_PRIORITY,
+								   0);
 	if (Status != CFE_SUCCESS)
 	{
 		goto MAVLINK_InitListenerTask_Exit_Tag;
@@ -426,6 +437,64 @@ MAVLINK_MsgAction_t MAVLINK_GetMessageAction(mavlink_message_t msg)
 	OS_MutSemGive(MAVLINK_AppData.ActionMapMutex);
 
 	return action;
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Child Task Pass Thru Listener Main                              */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+void MAVLINK_PassThruListenerTaskMain(void)
+{
+	int32 Status = -1;
+	mavlink_message_t 		msg;
+	mavlink_status_t 		msg_status;
+    uint32 					msg_size = MAVLINK_MAX_PACKET_LEN;
+
+	Status = CFE_ES_RegisterChildTask();
+	if (Status == CFE_SUCCESS)
+	{
+		/* Ingest Loop */
+		do{
+			/* Receive mavlink message */
+			MAVLINK_ReadPassThru(MAVLINK_AppData.PassThruIngestBuffer, &msg_size);
+
+			/* Verify message length. If equal to -1 there is no data on the socket */
+			if(msg_size == -1)
+			{
+				msg_size = MAVLINK_MAX_PACKET_LEN;
+				continue;
+			}
+
+			/* Decode the message */
+			for (int index = 0; index < msg_size; ++index)
+			{
+				if (mavlink_parse_char(MAVLINK_COMM_0, MAVLINK_AppData.PassThruIngestBuffer[index], &msg, &msg_status))
+				{
+					if(msg.msgid != MAVLINK_MSG_ID_HEARTBEAT)
+					{
+						/* Send msg to GCS. Any other message from PX4 is not intended for us */
+						MAVLINK_SendMessage((char *) &MAVLINK_AppData.PassThruIngestBuffer, msg_size); //TODO: does send need thread safety
+						OS_printf("Routing px4 msg to GCS\n");
+					}
+					else
+					{
+						OS_printf("Intercepting px4 heartbeat\n");
+					}
+				}
+			}
+
+            /* Wait before next iteration */
+			OS_TaskDelay(100);
+		}while(MAVLINK_AppData.IngestActive == TRUE);
+
+		CFE_ES_ExitChildTask();
+	}
+	else
+	{
+		/* Can't send event or write to syslog because this task isn't registered with the cFE. */
+		OS_printf("MAVLINK Listener Child Task Registration failed!\n");
+	}
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -481,7 +550,6 @@ void MAVLINK_ListenerTaskMain(void)
 						MAVLINK_MessagePassThru(msg);
 						//OS_printf("Def pass thru\n");
 					}
-
 				}
 			}
 
@@ -500,7 +568,12 @@ void MAVLINK_ListenerTaskMain(void)
 
 void MAVLINK_MessagePassThru(mavlink_message_t msg)
 {
-	//todo
+	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
+	uint16 msg_size = 0;
+
+	// We don't handle this message. Send it to PX4
+	msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
+	MAVLINK_SendPassThru((char *) &msgBuf, msg_size);
 }
 
 void MAVLINK_MessageRouter(mavlink_message_t msg)
@@ -1104,6 +1177,14 @@ void MAVLINK_AppMain()
             /* We apparently tried to load a new table but failed.  Terminate the application. */
             MAVLINK_AppData.uiRunStatus = CFE_ES_APP_ERROR;
         }
+
+        CFE_SB_MsgPtr_t 	CmdMsgPtr;
+		MAVLINK_NoArgCmd_t  msg1;
+		CFE_SB_InitMsg(&msg1, CI_CMD_MID, sizeof(MAVLINK_NoArgCmd_t), FALSE);
+		CmdMsgPtr = (CFE_SB_MsgPtr_t)&msg1;
+		CFE_SB_SetCmdCode(CmdMsgPtr, PARAMS_NOOP_CC);
+		iStatus = CFE_SB_SendMsg(CmdMsgPtr);
+		OS_printf("noop params %i\n", iStatus);
     }
 
     /* Stop Performance Log entry */

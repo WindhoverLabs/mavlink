@@ -33,6 +33,7 @@ extern "C" {
 *************************************************************************/
 #define MAVLINK_TIMEOUT_MSEC             	(1000)
 #define MAVLINK_LISTENER_TASK_NAME  				"MAVLINK_LISTENER"
+#define MAVLINK_PASSTHRU_LISTENER_TASK_NAME  		"MAVLINK_PASSTHRU_LISTENER"
 #define MAVLINK_LISTENER_TASK_STACK_SIZE			16000
 #define MAVLINK_LISTENER_TASK_PRIORITY				100
 #define MAVLINK_CFG_TBL_MUTEX_NAME 					"MAVLINK_CFG_TBL_MUTEX"
@@ -84,6 +85,9 @@ typedef struct
 
     /** \brief Buffer for child task cmd ingest */
     uint8           IngestBuffer[MAVLINK_MAX_PACKET_LEN];
+
+    /** \brief Buffer for child task pass thru ingest */
+	uint8           PassThruIngestBuffer[MAVLINK_MAX_PACKET_LEN];
 
     /** \brief ID of listener child task */
 	uint32          ListenerTaskID;
@@ -329,6 +333,7 @@ void  MAVLINK_SendOutData(void);
 boolean  MAVLINK_VerifyCmdLength(CFE_SB_Msg_t* MsgPtr, uint16 usExpectedLen);
 
 int32 MAVLINK_InitChildTasks(void);
+void MAVLINK_PassThruListenerTaskMain(void);
 void MAVLINK_ListenerTaskMain(void);
 void MAVLINK_CleanupCallback();
 void MAVLINK_EnableConnection(void);
