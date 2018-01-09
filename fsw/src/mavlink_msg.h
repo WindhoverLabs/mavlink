@@ -156,6 +156,10 @@ typedef struct
 
     boolean			   HeartbeatActive;
 
+    uint8 SystemStatus;
+    uint8 BaseMode;
+    uint32 CustomMode;
+
 } MAVLINK_HkTlm_t;
 
 #ifdef __cplusplus

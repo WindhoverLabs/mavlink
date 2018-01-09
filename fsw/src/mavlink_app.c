@@ -13,8 +13,6 @@
 #include "mavlink_version.h"
 #include "mavlink_app.h"
 #include "mavlink_msg.h"
-#include "params_platform_cfg.h"
-#include "params_msg.h"
 
 /************************************************************************
 ** Local Defines
@@ -358,10 +356,9 @@ void MAVLINK_CleanupCallback()
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                 */
-/* Spawn Child Task				                                   */
+/* Spawn Child Tasks			                                   */
 /*                                                                 */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
 int32 MAVLINK_InitChildTasks(void)
 {
     int32 Status = CFE_SUCCESS;
@@ -404,18 +401,33 @@ MAVLINK_InitListenerTask_Exit_Tag:
     return Status;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Enable Connections		                                       */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void MAVLINK_EnableConnection(void)
 {
 	MAVLINK_AppData.HkTlm.HeartbeatActive = TRUE;
 	MAVLINK_AppData.IngestActive = TRUE;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Disable Connections		                                       */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void MAVLINK_DisableConnection(void)
 {
 	MAVLINK_AppData.HkTlm.HeartbeatActive = FALSE;
 	MAVLINK_AppData.IngestActive = FALSE;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Get Action for Mavlink Message                                  */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 MAVLINK_MsgAction_t MAVLINK_GetMessageAction(mavlink_message_t msg)
 {
 	MAVLINK_MsgAction_t 	action = ACTION_PASSTHRU;
@@ -456,7 +468,7 @@ void MAVLINK_PassThruListenerTaskMain(void)
 	{
 		/* Ingest Loop */
 		do{
-			/* Receive mavlink message */
+			/* Receive px4 message */
 			MAVLINK_ReadPassThru(MAVLINK_AppData.PassThruIngestBuffer, &msg_size);
 
 			/* Verify message length. If equal to -1 there is no data on the socket */
@@ -466,7 +478,7 @@ void MAVLINK_PassThruListenerTaskMain(void)
 				continue;
 			}
 
-			/* Decode the message */
+			/* Parse the message */
 			for (int index = 0; index < msg_size; ++index)
 			{
 				if (mavlink_parse_char(MAVLINK_COMM_0, MAVLINK_AppData.PassThruIngestBuffer[index], &msg, &msg_status))
@@ -475,17 +487,17 @@ void MAVLINK_PassThruListenerTaskMain(void)
 					{
 						/* Send msg to GCS. Any other message from PX4 is not intended for us */
 						MAVLINK_SendMessage((char *) &MAVLINK_AppData.PassThruIngestBuffer, msg_size); //TODO: does send need thread safety
-						//OS_printf("Routing px4 msg to GCS\n");
 					}
 					else
 					{
-						OS_printf("Intercepting px4 heartbeat\n");
+						mavlink_heartbeat_t decodedMsg;
+						mavlink_msg_heartbeat_decode(&msg, &decodedMsg);
+						MAVLINK_AppData.HkTlm.SystemStatus = decodedMsg.system_status;
+						MAVLINK_AppData.HkTlm.BaseMode = decodedMsg.base_mode;
+						MAVLINK_AppData.HkTlm.CustomMode = decodedMsg.custom_mode;
 					}
 				}
 			}
-
-            /* Wait before next iteration */
-			OS_TaskDelay(100);
 		}while(MAVLINK_AppData.IngestActive == TRUE);
 
 		CFE_ES_ExitChildTask();
@@ -543,10 +555,9 @@ void MAVLINK_ListenerTaskMain(void)
 						MAVLINK_MessagePassThru(msg);
 						OS_printf("Passing GCS msgid %i to px4\n", msg.msgid);
 					}
-					// Default behavior pass thru
 					else
 					{
-						/* Message Pass Thru */
+						/* Default behavior pass thru */
 						MAVLINK_MessagePassThru(msg);
 						OS_printf("Passing GCS msgid %i to px4\n", msg.msgid);
 					}
@@ -566,16 +577,26 @@ void MAVLINK_ListenerTaskMain(void)
 	}
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Mavlink Pass Thru from GCS to PX4                               */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void MAVLINK_MessagePassThru(mavlink_message_t msg)
 {
 	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
 	uint16 msg_size = 0;
 
-	// We don't handle this message. Send it to PX4
+	/* We don't handle this message. Send it to PX4 */
 	msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
 	MAVLINK_SendPassThru((char *) &msgBuf, msg_size);
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Mavlink Message Router	                                       */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void MAVLINK_MessageRouter(mavlink_message_t msg)
 {
 	int32 	Status = CFE_SUCCESS;
@@ -591,15 +612,21 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 		}
 		case MAVLINK_MSG_ID_PARAM_REQUEST_LIST:
 		{
-			OS_printf("QGC requseting params\n");
+			CFE_EVS_SendEvent(MAVLINK_HANDLE_INF_EID, CFE_EVS_INFORMATION,
+							  "QGC requesting param list");
+
 			Status = MAVLINK_HandleRequestParams();
 			break;
 		}
 		case MAVLINK_MSG_ID_PARAM_SET:
 		{
-			OS_printf("QGC setting param\n");
 			mavlink_param_set_t decodedMsg;
 			mavlink_msg_param_set_decode(&msg, &decodedMsg);
+			CFE_EVS_SendEvent(MAVLINK_HANDLE_INF_EID, CFE_EVS_INFORMATION,
+										  "QGC setting param: %s = %f",
+										  decodedMsg.param_id,
+										  decodedMsg.param_value);
+
 			Status = MAVLINK_HandleSetParam(decodedMsg);
 			break;
 		}
@@ -607,26 +634,32 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 		{
 			mavlink_param_request_read_t decodedMsg;
 			mavlink_msg_param_request_read_decode(&msg, &decodedMsg);
-			OS_printf("QGC requseting specified param at index: %i\n", decodedMsg.param_index);
+			CFE_EVS_SendEvent(MAVLINK_HANDLE_INF_EID, CFE_EVS_INFORMATION,
+							  "QGC requseting specified param at index: %i", decodedMsg.param_index);
+
 			Status = MAVLINK_HandleRequestParamRead(decodedMsg);
 			break;
 		}
 		case MAVLINK_MSG_ID_COMMAND_LONG:
 		{
-			//OS_printf("Recieved command long\n");
+			CFE_EVS_SendEvent(MAVLINK_HANDLE_INF_EID, CFE_EVS_INFORMATION,
+							  "QGC sending command long");
 			mavlink_command_long_t 		decodedMsg;
 			mavlink_msg_command_long_decode(&msg, &decodedMsg);
 			break;
 		}
 		case MAVLINK_MSG_ID_MISSION_REQUEST_LIST:
 		{
-			OS_printf("QGC requseting mission list\n");
+			CFE_EVS_SendEvent(MAVLINK_HANDLE_INF_EID, CFE_EVS_INFORMATION,
+							  "QGC requseting mission list");
+
 			Status = MAVLINK_HandleRequestMission();
 			break;
 		}
 		case MAVLINK_MSG_ID_MISSION_ACK:
 		{
-			OS_printf("QGC ACK mission list\n");
+			CFE_EVS_SendEvent(MAVLINK_HANDLE_INF_EID, CFE_EVS_INFORMATION,
+							  "QGC ACK mission list");
 			break;
 		}
 		default:
@@ -641,6 +674,11 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 	}
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Handle Request Parameter List                                   */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 int32 MAVLINK_HandleRequestParams()
 {
 	int32 				Status = CFE_SUCCESS;
@@ -656,6 +694,11 @@ int32 MAVLINK_HandleRequestParams()
 	return Status;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Handle Set Parameter			                                   */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 {
 	int32 				Status = CFE_SUCCESS;
@@ -689,6 +732,11 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 	return Status;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Handle Request Parameter Read                                   */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 int32 MAVLINK_HandleRequestParamRead(mavlink_param_request_read_t paramMsg)
 {
 	int32 				Status = CFE_SUCCESS;
@@ -707,6 +755,11 @@ int32 MAVLINK_HandleRequestParamRead(mavlink_param_request_read_t paramMsg)
 	return Status;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Handle Request Mission List                                     */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 int32 MAVLINK_HandleRequestMission()
 {
 	int32 Status = CFE_SUCCESS;
@@ -727,6 +780,7 @@ int32 MAVLINK_HandleRequestMission()
 	return Status;
 }
 
+
 void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat)
 {
 	if(heartbeat.type == MAV_TYPE_GCS)
@@ -743,6 +797,11 @@ void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat)
 	}
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Check for Initialized Parameters                                */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void MAVLINK_CheckParamsInit(PARAMS_HkTlm_t* ParamsHkPtr)
 {
 	if(ParamsHkPtr->ParamsInitialized == TRUE)
@@ -756,6 +815,11 @@ void MAVLINK_CheckParamsInit(PARAMS_HkTlm_t* ParamsHkPtr)
 	}
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Send Heartbeat				                                   */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void MAVLINK_SendHeartbeat(void)
 {
 	uint8 system_id 		= MAVLINK_PARAM_SYSTEM_ID;
@@ -763,9 +827,9 @@ void MAVLINK_SendHeartbeat(void)
 	mavlink_message_t msg 	= {0};
 	uint8 type				= MAV_TYPE_OCTOROTOR;
 	uint8 autopilot 		= MAV_AUTOPILOT_GENERIC;
-	uint8 base_mode 		= MAV_MODE_FLAG_STABILIZE_ENABLED;
-	uint32 custom_mode 		= 0;
-	uint8 system_status 	= 3;
+	uint8 base_mode 		= MAVLINK_AppData.HkTlm.BaseMode;
+	uint32 custom_mode 		= MAVLINK_AppData.HkTlm.CustomMode;
+	uint8 system_status 	= MAVLINK_AppData.HkTlm.SystemStatus;
 	uint16 msg_size 		= 0;
 	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
 
@@ -779,6 +843,11 @@ void MAVLINK_SendHeartbeat(void)
 	}
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Send Parameter to GCS		                                   */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 void MAVLINK_SendParamToGCS(PARAMS_SendParamDataCmd_t* MsgPtr)
 {
 	mavlink_message_t msg 	= {0};
@@ -819,7 +888,7 @@ void MAVLINK_ProcessNewParamCmds(CFE_SB_Msg_t* MsgPtr)
         	/* If params is sending param data route to GCS */
             case PARAMS_PARAM_DATA_CC:
                 MAVLINK_AppData.HkTlm.paramCmdCnt++;
-                MAVLINK_SendParamToGCS(MsgPtr);
+                MAVLINK_SendParamToGCS((PARAMS_SendParamDataCmd_t*)MsgPtr);
                 break;
 
             default:
@@ -1184,7 +1253,7 @@ void MAVLINK_AppMain()
 		CmdMsgPtr = (CFE_SB_MsgPtr_t)&msg1;
 		CFE_SB_SetCmdCode(CmdMsgPtr, PARAMS_NOOP_CC);
 		iStatus = CFE_SB_SendMsg(CmdMsgPtr);
-		OS_printf("noop params %i\n", iStatus);
+		//OS_printf("noop params %i\n", iStatus);
     }
 
     /* Stop Performance Log entry */

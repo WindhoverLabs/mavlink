@@ -57,7 +57,7 @@ extern "C" {
 **  \endreturns
 **
 *************************************************************************/
-int32  MAVLINK_InitParamTbl(void);
+int32  MAVLINK_InitActionMap(void);
 
 /************************************************************************/
 /** \brief Validate MAVLINK Config table
