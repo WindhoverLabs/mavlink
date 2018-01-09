@@ -92,6 +92,9 @@ typedef struct
     /** \brief ID of listener child task */
 	uint32          ListenerTaskID;
 
+    /** \brief ID of listener child task */
+	uint32          PassThruListenerTaskID;
+
     /* Inputs/Outputs */
 
     /** \brief Input Data from I/O or other apps */

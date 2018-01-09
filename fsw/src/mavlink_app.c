@@ -380,7 +380,7 @@ int32 MAVLINK_InitChildTasks(void)
 		goto MAVLINK_InitListenerTask_Exit_Tag;
 	}
 
-	Status= CFE_ES_CreateChildTask(&MAVLINK_AppData.ListenerTaskID,
+	Status= CFE_ES_CreateChildTask(&MAVLINK_AppData.PassThruListenerTaskID,
 								   MAVLINK_PASSTHRU_LISTENER_TASK_NAME,
 								   MAVLINK_PassThruListenerTaskMain,
 								   NULL,
@@ -475,7 +475,7 @@ void MAVLINK_PassThruListenerTaskMain(void)
 					{
 						/* Send msg to GCS. Any other message from PX4 is not intended for us */
 						MAVLINK_SendMessage((char *) &MAVLINK_AppData.PassThruIngestBuffer, msg_size); //TODO: does send need thread safety
-						OS_printf("Routing px4 msg to GCS\n");
+						//OS_printf("Routing px4 msg to GCS\n");
 					}
 					else
 					{
@@ -541,14 +541,14 @@ void MAVLINK_ListenerTaskMain(void)
 					{
 						/* Message Pass Thru */
 						MAVLINK_MessagePassThru(msg);
-						//OS_printf("Pass thru\n");
+						OS_printf("Passing GCS msgid %i to px4\n", msg.msgid);
 					}
 					// Default behavior pass thru
 					else
 					{
 						/* Message Pass Thru */
 						MAVLINK_MessagePassThru(msg);
-						//OS_printf("Def pass thru\n");
+						OS_printf("Passing GCS msgid %i to px4\n", msg.msgid);
 					}
 				}
 			}

@@ -51,7 +51,7 @@ int32 MAVLINK_InitActionMap()
     /* Register Config table */
     iStatus = CFE_TBL_Register(&MAVLINK_AppData.ActionMapHdl,
     						   MAVLINK_ACTION_MAP_TABLENAME,
-                               (sizeof(MAVLINK_ActionMapTbl_t) * MAVLINK_ACTION_MAP_ENTRIES),
+                               (sizeof(MAVLINK_ActionMapTbl_t)),
                                CFE_TBL_OPT_DEFAULT,
 							   MAVLINK_ValidateActionMap);
     if (iStatus != CFE_SUCCESS)
