@@ -23,8 +23,7 @@
 #include "mavlink_cds_utils.h"
 #include "mavlink_custom.h"
 #include "mavlink.h"
-#include "params_platform_cfg.h"
-#include "params_msg.h"
+#include "prm_lib.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -347,13 +346,13 @@ void MAVLINK_MessageRouter(mavlink_message_t msg);
 void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat);
 void MAVLINK_SendHeartbeat(void);
 void MAVLINK_SendParamsToGCS(void);
+void MAVLINK_SendParamToGCS(PRMLIB_ParamData_t param_data, uint16 param_index, uint16 param_count);
 MAVLINK_MsgAction_t MAVLINK_GetMessageAction(mavlink_message_t msg);
 int32 MAVLINK_HandleRequestParams();
 int32 MAVLINK_HandleSetParam(mavlink_param_set_t param);
 int32 MAVLINK_HandleRequestParamRead(mavlink_param_request_read_t paramMsg);
 int32 MAVLINK_HandleRequestMission();
 void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat);
-void MAVLINK_CheckParamsInit(PARAMS_HkTlm_t* ParamsHkPtr);
 void MAVLINK_ProcessNewParamCmds(CFE_SB_Msg_t* MsgPtr);
 void MAVLINK_MessagePassThru(mavlink_message_t msg);
 

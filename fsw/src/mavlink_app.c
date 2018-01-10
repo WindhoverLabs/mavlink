@@ -14,6 +14,7 @@
 #include "mavlink_app.h"
 #include "mavlink_msg.h"
 
+
 /************************************************************************
 ** Local Defines
 *************************************************************************/
@@ -151,18 +152,6 @@ int32 MAVLINK_InitPipe()
                                      (unsigned int)iStatus);
             goto MAVLINK_InitPipe_Exit_Tag;
         }
-
-        /* Subscribe to param app messages */
-		iStatus = CFE_SB_SubscribeEx(PARAMS_PARAM_MID, MAVLINK_AppData.CmdPipeId, CFE_SB_Default_Qos,
-                						(uint16)MAVLINK_CMD_PIPE_DEPTH);
-
-		if (iStatus != CFE_SUCCESS)
-		{
-			(void) CFE_EVS_SendEvent(MAVLINK_INIT_ERR_EID, CFE_EVS_ERROR,
-									 "CMD Pipe failed to subscribe to PARAMS_PARAM_MID. (0x%08X)",
-									 (unsigned int)iStatus);
-			goto MAVLINK_InitPipe_Exit_Tag;
-		}
     }
     else
     {
@@ -178,16 +167,7 @@ int32 MAVLINK_InitPipe()
                                  MAVLINK_DATA_PIPE_NAME);
     if (iStatus == CFE_SUCCESS)
     {
-    	/* Subscribe to param app messages */
-		iStatus = CFE_SB_Subscribe(PARAMS_HK_TLM_MID, MAVLINK_AppData.DataPipeId);
 
-		if (iStatus != CFE_SUCCESS)
-		{
-			(void) CFE_EVS_SendEvent(MAVLINK_INIT_ERR_EID, CFE_EVS_ERROR,
-									 "DATA Pipe failed to subscribe to PARAMS_HK_TLM_MID. (0x%08X)",
-									 (unsigned int)iStatus);
-			goto MAVLINK_InitPipe_Exit_Tag;
-		}
     }
     else
     {
@@ -684,13 +664,13 @@ int32 MAVLINK_HandleRequestParams()
 	int32 				Status = CFE_SUCCESS;
 	CFE_SB_MsgPtr_t 	CmdMsgPtr;
 	MAVLINK_NoArgCmd_t  msg;
+	PRMLIB_ParamTblData_t* ParamTblPtr;
 
-	/* Signal params app to send all params */
-	CFE_SB_InitMsg(&msg, PARAMS_CMD_MID, sizeof(MAVLINK_NoArgCmd_t), FALSE);
-	CmdMsgPtr = (CFE_SB_MsgPtr_t)&msg;
-	CFE_SB_SetCmdCode(CmdMsgPtr, PARAMS_REQUEST_ALL_CC);
-	Status = CFE_SB_SendMsg(CmdMsgPtr);
-	OS_printf("signalling params %i\n", Status);
+	/* Get params from lib */
+	ParamTblPtr = PRMLIB_GetParamTable();
+
+
+
 	return Status;
 }
 
@@ -702,15 +682,14 @@ int32 MAVLINK_HandleRequestParams()
 int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 {
 	int32 				Status = CFE_SUCCESS;
-	CFE_SB_MsgPtr_t 	CmdMsgPtr;
-	PARAMS_SendParamDataCmd_t  msg;
+	PRMLIB_ParamData_t param_data;
 
 	/* Copy data to msg */
-	msg.param_data.vehicle_id = param.target_system;
-	msg.param_data.component_id = param.target_component;
-	msg.param_data.value = param.param_value;
-	msg.param_data.type = param.param_type;
-	strcpy(msg.param_data.name, param.param_id);
+	param_data.vehicle_id = param.target_system;
+	param_data.component_id = param.target_component;
+	param_data.value = param.param_value;
+	param_data.type = param.param_type;
+	strcpy(param_data.name, param.param_id);
 
 	OS_printf("name: %s \n", param.param_id);
 	OS_printf("val: %f \n", param.param_value);
@@ -718,17 +697,7 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 	OS_printf("vehicle_id: %u \n", param.target_system);
 	OS_printf("component_id: %u \n", param.target_component);
 
-	/* Signal params app to set param */
-	CFE_SB_InitMsg(&msg, PARAMS_CMD_MID, sizeof(PARAMS_SendParamDataCmd_t), FALSE);
-	CmdMsgPtr = (CFE_SB_MsgPtr_t)&msg;
-	CFE_SB_SetCmdCode(CmdMsgPtr, PARAMS_SET_PARAM_CC);
-	Status = CFE_SB_SendMsg(CmdMsgPtr);
 
-//	OS_printf("name: %s \n", test->param_data.name);
-//	OS_printf("val: %f \n", test->param_data.value);
-//	OS_printf("type: %u \n", test->param_data.type);
-//	OS_printf("vehicle_id: %u \n", test->param_data.vehicle_id);
-//	OS_printf("component_id: %u \n\n\n", test->param_data.component_id);
 	return Status;
 }
 
@@ -742,17 +711,11 @@ int32 MAVLINK_HandleRequestParamRead(mavlink_param_request_read_t paramMsg)
 	int32 				Status = CFE_SUCCESS;
 	CFE_SB_MsgPtr_t 	CmdMsgPtr;
 	MAVLINK_NoArgCmd_t  msg;
-	PARAMS_RequestParamDataCmd_t requestCmd;
 
-	requestCmd.param_index = paramMsg.param_index;
-	memcpy(requestCmd.name, paramMsg.param_id, sizeof(MAVLINK_MSG_PARAM_REQUEST_READ_FIELD_PARAM_ID_LEN));
+//	requestCmd.param_index = paramMsg.param_index;
+//	memcpy(requestCmd.name, paramMsg.param_id, sizeof(MAVLINK_MSG_PARAM_REQUEST_READ_FIELD_PARAM_ID_LEN));
 
 	/* Signal params app to send specified cmd */
-	CFE_SB_InitMsg(&msg, PARAMS_CMD_MID, sizeof(MAVLINK_NoArgCmd_t), FALSE);
-	CmdMsgPtr = (CFE_SB_MsgPtr_t)&msg;
-	CFE_SB_SetCmdCode(CmdMsgPtr, PARAMS_REQUEST_PARAM_CC);
-	Status = CFE_SB_SendMsg(CmdMsgPtr);
-	return Status;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -802,18 +765,18 @@ void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat)
 /* Check for Initialized Parameters                                */
 /*                                                                 */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-void MAVLINK_CheckParamsInit(PARAMS_HkTlm_t* ParamsHkPtr)
-{
-	if(ParamsHkPtr->ParamsInitialized == TRUE)
-	{
-		MAVLINK_EnableConnection();
-	}
-	else
-	{
-		// TODO: This causes the connection to toggle enabled
-		//MAVLINK_DisableConnection();
-	}
-}
+//void MAVLINK_CheckParamsInit(PARAMS_HkTlm_t* ParamsHkPtr)
+//{
+//	if(ParamsHkPtr->ParamsInitialized == TRUE)
+//	{
+//		MAVLINK_EnableConnection();
+//	}
+//	else
+//	{
+//		// TODO: This causes the connection to toggle enabled
+//		//MAVLINK_DisableConnection();
+//	}
+//}
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                 */
@@ -848,17 +811,16 @@ void MAVLINK_SendHeartbeat(void)
 /* Send Parameter to GCS		                                   */
 /*                                                                 */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-void MAVLINK_SendParamToGCS(PARAMS_SendParamDataCmd_t* MsgPtr)
+void MAVLINK_SendParamToGCS(PRMLIB_ParamData_t param_data, uint16 param_index, uint16 param_count)
 {
 	mavlink_message_t msg 	= {0};
 	mavlink_param_value_t param = {0};
 	uint16 msg_size 		= 0;
 	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
-	PARAMS_ParamData_t param_data = MsgPtr->param_data;
 
 	/* Copy values from params msg mavlink msg */
-	param.param_index = MsgPtr->param_index;
-	param.param_count = MsgPtr->param_count;
+	param.param_index = param_index;
+	param.param_count = param_count;
 	param.param_value = param_data.value;
 	memcpy(&param.param_id, param_data.name, sizeof(param_data.name));
 	param.param_type = param_data.type;
@@ -867,36 +829,8 @@ void MAVLINK_SendParamToGCS(PARAMS_SendParamDataCmd_t* MsgPtr)
 	mavlink_msg_param_value_encode(MAVLINK_PARAM_SYSTEM_ID, MAVLINK_PARAM_COMPONENT_ID, &msg, &param);
 	msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
     MAVLINK_SendMessage((char *) &msgBuf, msg_size);
-    OS_printf("Send param to gcs\n");
+    OS_printf("Sent param to gcs\n");
 }
-
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/*                                                                 */
-/* Process Params Commands                                            */
-/*                                                                 */
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
-void MAVLINK_ProcessNewParamCmds(CFE_SB_Msg_t* MsgPtr)
-{
-    uint32  uiCmdCode=0;
-
-    if (MsgPtr != NULL)
-    {
-        uiCmdCode = CFE_SB_GetCmdCode(MsgPtr);
-        switch (uiCmdCode)
-        {
-        	/* If params is sending param data route to GCS */
-            case PARAMS_PARAM_DATA_CC:
-                MAVLINK_AppData.HkTlm.paramCmdCnt++;
-                MAVLINK_SendParamToGCS((PARAMS_SendParamDataCmd_t*)MsgPtr);
-                break;
-
-            default:
-                break;
-        }
-    }
-}
-
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                 */
@@ -994,11 +928,6 @@ void MAVLINK_ProcessNewData()
             DataMsgId = CFE_SB_GetMsgId(DataMsgPtr);
             switch (DataMsgId)
             {
-            	case PARAMS_HK_TLM_MID:
-            		MAVLINK_CheckParamsInit((PARAMS_HkTlm_t *) DataMsgPtr);
-            		break;
-
-
                 default:
                     (void) CFE_EVS_SendEvent(MAVLINK_MSGID_ERR_EID, CFE_EVS_ERROR,
                                       "Recvd invalid data msgId (0x%04X)", (unsigned short)DataMsgId);
@@ -1044,10 +973,6 @@ void MAVLINK_ProcessNewCmds()
                 case MAVLINK_CMD_MID:
                     MAVLINK_ProcessNewAppCmds(CmdMsgPtr);
                     break;
-
-                case PARAMS_PARAM_MID:
-                	MAVLINK_ProcessNewParamCmds(CmdMsgPtr);
-					break;
 
                 default:
                     /* Bump the command error counter for an unknown command.
