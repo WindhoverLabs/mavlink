@@ -928,7 +928,6 @@ int32 MAVLINK_RcvMsg(int32 iBlocking)
                 MAVLINK_SendHeartbeat();
                 MAVLINK_ProcessNewCmds();
                 MAVLINK_ProcessNewData();
-
                 /* TODO:  Add more code here to handle other things when app wakes up */
 
                 /* The last thing to do at the end of this Wakeup cycle should be to
@@ -1247,13 +1246,6 @@ void MAVLINK_AppMain()
             MAVLINK_AppData.uiRunStatus = CFE_ES_APP_ERROR;
         }
 
-        CFE_SB_MsgPtr_t 	CmdMsgPtr;
-		MAVLINK_NoArgCmd_t  msg1;
-		CFE_SB_InitMsg(&msg1, CI_CMD_MID, sizeof(MAVLINK_NoArgCmd_t), FALSE);
-		CmdMsgPtr = (CFE_SB_MsgPtr_t)&msg1;
-		CFE_SB_SetCmdCode(CmdMsgPtr, PARAMS_NOOP_CC);
-		iStatus = CFE_SB_SendMsg(CmdMsgPtr);
-		OS_printf("noop ci %i\n", iStatus);
     }
 
     /* Stop Performance Log entry */
