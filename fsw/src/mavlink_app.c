@@ -1253,7 +1253,7 @@ void MAVLINK_AppMain()
 		CmdMsgPtr = (CFE_SB_MsgPtr_t)&msg1;
 		CFE_SB_SetCmdCode(CmdMsgPtr, PARAMS_NOOP_CC);
 		iStatus = CFE_SB_SendMsg(CmdMsgPtr);
-		//OS_printf("noop params %i\n", iStatus);
+		OS_printf("noop ci %i\n", iStatus);
     }
 
     /* Stop Performance Log entry */
