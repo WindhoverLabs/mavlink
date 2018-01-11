@@ -342,8 +342,7 @@ void MAVLINK_CleanupCallback()
 int32 MAVLINK_InitChildTasks(void)
 {
     int32 Status = CFE_SUCCESS;
-
-    MAVLINK_EnableConnection(); //TODO: REMOVE ME
+    MAVLINK_EnableConnection();// TODO: Remove
 
 	Status= CFE_ES_CreateChildTask(&MAVLINK_AppData.ListenerTaskID,
 								   MAVLINK_LISTENER_TASK_NAME,
@@ -457,7 +456,6 @@ void MAVLINK_PassThruListenerTaskMain(void)
 				msg_size = MAVLINK_MAX_PACKET_LEN;
 				continue;
 			}
-
 			/* Parse the message */
 			for (int index = 0; index < msg_size; ++index)
 			{
@@ -465,6 +463,22 @@ void MAVLINK_PassThruListenerTaskMain(void)
 				{
 					if(msg.msgid != MAVLINK_MSG_ID_HEARTBEAT)
 					{
+						// TODO: Remove
+						if(msg.msgid == MAVLINK_MSG_ID_AUTOPILOT_VERSION)
+						{
+							mavlink_autopilot_version_t decodedMsg;
+							mavlink_msg_autopilot_version_decode(&msg, &decodedMsg);
+							OS_printf("capability: %u", decodedMsg.capabilities);
+						}
+
+						if(msg.msgid == MAVLINK_MSG_ID_COMMAND_LONG)
+						{
+							mavlink_command_long_t 		decodedMsg;
+							mavlink_msg_command_long_decode(&msg, &decodedMsg);
+
+							MAVLINK_HandleCommandLong(decodedMsg);
+						}
+
 						/* Send msg to GCS. Any other message from PX4 is not intended for us */
 						MAVLINK_SendMessage((char *) &MAVLINK_AppData.PassThruIngestBuffer, msg_size); //TODO: does send need thread safety
 					}
@@ -625,6 +639,8 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 							  "QGC sending command long");
 			mavlink_command_long_t 		decodedMsg;
 			mavlink_msg_command_long_decode(&msg, &decodedMsg);
+
+			MAVLINK_HandleCommandLong(decodedMsg);
 			break;
 		}
 		case MAVLINK_MSG_ID_MISSION_REQUEST_LIST:
@@ -642,7 +658,7 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 			break;
 		}
 		default:
-			OS_printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", msg.sysid, msg.compid, msg.len, msg.msgid);
+			OS_printf("\nReceived unknown packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", msg.sysid, msg.compid, msg.len, msg.msgid);
 			break;
 	}
 
@@ -774,6 +790,30 @@ int32 MAVLINK_HandleRequestMission()
 	return Status;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+/*                                                                 */
+/* Handle Command Long		                                       */
+/*                                                                 */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+int32 MAVLINK_HandleCommandLong(mavlink_command_long_t msg)
+{
+	int32 Status = CFE_SUCCESS;
+	uint16 msg_size 		= 0;
+	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
+
+	OS_printf("Command long param: %i\n", msg.command);
+	OS_printf("Command long param: %f\n", msg.param1);
+	OS_printf("Command long param: %f\n", msg.param2);
+	OS_printf("Command long param: %f\n", msg.param3);
+	OS_printf("Command long param: %f\n", msg.param4);
+	OS_printf("Command long param: %f\n", msg.param5);
+	OS_printf("Command long param: %f\n", msg.param6);
+	OS_printf("Command long param: %f\n", msg.param7);
+
+
+	return Status;
+}
+
 
 void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat)
 {
@@ -796,18 +836,14 @@ void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat)
 /* Check for Initialized Parameters                                */
 /*                                                                 */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-//void MAVLINK_CheckParamsInit(PARAMS_HkTlm_t* ParamsHkPtr)
-//{
-//	if(ParamsHkPtr->ParamsInitialized == TRUE)
-//	{
-//		MAVLINK_EnableConnection();
-//	}
-//	else
-//	{
-//		// TODO: This causes the connection to toggle enabled
-//		//MAVLINK_DisableConnection();
-//	}
-//}
+void MAVLINK_CheckParamsInit()
+{
+	// TODO: Find better way to do this
+	if(MAVLINK_AppData.WakeupCount > MAVLINK_HEARTBEAT_WAIT_CYCLES)
+	{
+		MAVLINK_EnableConnection();
+	}
+}
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                 */
@@ -826,6 +862,8 @@ void MAVLINK_SendHeartbeat(void)
 	uint8 system_status 	= MAVLINK_AppData.HkTlm.SystemStatus;
 	uint16 msg_size 		= 0;
 	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
+
+	MAVLINK_CheckParamsInit();
 
 	if (MAVLINK_AppData.HkTlm.HeartbeatActive == TRUE)
 	{
@@ -896,6 +934,7 @@ int32 MAVLINK_RcvMsg(int32 iBlocking)
 
                 /* The last thing to do at the end of this Wakeup cycle should be to
                  * automatically publish new output. */
+                MAVLINK_AppData.WakeupCount++;
                 MAVLINK_SendOutData();
                 break;
 
@@ -1030,7 +1069,7 @@ void MAVLINK_ProcessNewCmds()
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                 */
-/* Process MAVLINK Commands                                            */
+/* Process MAVLINK Commands                                        */
 /*                                                                 */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -1073,7 +1112,7 @@ void MAVLINK_ProcessNewAppCmds(CFE_SB_Msg_t* MsgPtr)
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                 */
-/* Send MAVLINK Housekeeping                                           */
+/* Send MAVLINK Housekeeping                                       */
 /*                                                                 */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
@@ -1144,7 +1183,7 @@ boolean MAVLINK_VerifyCmdLength(CFE_SB_Msg_t* MsgPtr,
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 /*                                                                 */
-/* MAVLINK application entry point and main process loop               */
+/* MAVLINK application entry point and main process loop           */
 /*                                                                 */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 

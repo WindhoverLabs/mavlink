@@ -112,6 +112,9 @@ typedef struct
     /** \brief Mutex for Action Map table */
 	uint32          ActionMapMutex;
 
+	/** \brief  */
+	uint32          WakeupCount;
+
 } MAVLINK_AppData_t;
 
 /************************************************************************
@@ -352,6 +355,7 @@ int32 MAVLINK_HandleRequestParams();
 int32 MAVLINK_HandleSetParam(mavlink_param_set_t param);
 int32 MAVLINK_HandleRequestParamRead(mavlink_param_request_read_t paramMsg);
 int32 MAVLINK_HandleRequestMission();
+int32 MAVLINK_HandleCommandLong(mavlink_command_long_t msg);
 void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat);
 void MAVLINK_ProcessNewParamCmds(CFE_SB_Msg_t* MsgPtr);
 void MAVLINK_MessagePassThru(mavlink_message_t msg);
