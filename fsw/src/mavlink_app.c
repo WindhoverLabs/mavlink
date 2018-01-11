@@ -663,13 +663,17 @@ int32 MAVLINK_HandleRequestParams()
 {
 	int32 				Status = CFE_SUCCESS;
 	CFE_SB_MsgPtr_t 	CmdMsgPtr;
-	MAVLINK_NoArgCmd_t  msg;
-	PRMLIB_ParamTblData_t* ParamTblPtr;
+	uint16 				ParamCount = 0;
+	PRMLIB_ParamData_t  params[PRMLIB_PARAM_TBL_MAX_ENTRY];
 
 	/* Get params from lib */
-	ParamTblPtr = PRMLIB_GetParamTable();
+	PRMLIB_GetParams(params, &ParamCount);
 
-
+	/* Iterate over params and send to GCS */
+	for(int i = 0; i < ParamCount; ++i)
+	{
+		MAVLINK_SendParamToGCS(params[i], i, ParamCount);
+	}
 
 	return Status;
 }
@@ -683,8 +687,10 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 {
 	int32 				Status = CFE_SUCCESS;
 	PRMLIB_ParamData_t param_data;
+	uint16 				ParamCount = 0;
+	uint16 				ParamIndex = 0;
 
-	/* Copy data to msg */
+	/* Copy data from msg */
 	param_data.vehicle_id = param.target_system;
 	param_data.component_id = param.target_component;
 	param_data.value = param.param_value;
@@ -697,6 +703,18 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 	OS_printf("vehicle_id: %u \n", param.target_system);
 	OS_printf("component_id: %u \n", param.target_component);
 
+	if(PRMLIB_ParamExists(param_data) == TRUE)
+	{
+		PRMLIB_UpdateParam(param_data);
+	}
+	else
+	{
+		//TODO: verify expected
+	}
+
+	PRMLIB_GetParamValue(&param_data, &ParamIndex, &ParamCount);
+
+	MAVLINK_SendParamToGCS(param_data, ParamIndex, ParamCount);
 
 	return Status;
 }
