@@ -84,6 +84,9 @@ typedef struct
     /** \brief Mavlink cmd ingest flag */
     boolean IngestActive;
 
+    /** \brief Mavlink listeners alive flag */
+    boolean ListenersAlive;
+
     /** \brief Buffer for child task cmd ingest */
     uint8           IngestBuffer[MAVLINK_MAX_PACKET_LEN];
 

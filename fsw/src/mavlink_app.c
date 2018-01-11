@@ -342,7 +342,8 @@ void MAVLINK_CleanupCallback()
 int32 MAVLINK_InitChildTasks(void)
 {
     int32 Status = CFE_SUCCESS;
-    MAVLINK_EnableConnection();// TODO: Remove
+
+    MAVLINK_AppData.ListenersAlive = TRUE;
 
 	Status= CFE_ES_CreateChildTask(&MAVLINK_AppData.ListenerTaskID,
 								   MAVLINK_LISTENER_TASK_NAME,
@@ -445,54 +446,57 @@ void MAVLINK_PassThruListenerTaskMain(void)
 	Status = CFE_ES_RegisterChildTask();
 	if (Status == CFE_SUCCESS)
 	{
-		/* Ingest Loop */
-		do{
-			/* Receive px4 message */
-			MAVLINK_ReadPassThru(MAVLINK_AppData.PassThruIngestBuffer, &msg_size);
+		while(MAVLINK_AppData.ListenersAlive == TRUE)
+		{
+			/* Ingest Loop */
+			do{
+				/* Receive px4 message */
+				MAVLINK_ReadPassThru(MAVLINK_AppData.PassThruIngestBuffer, &msg_size);
 
-			/* Verify message length. If equal to -1 there is no data on the socket */
-			if(msg_size == -1)
-			{
-				msg_size = MAVLINK_MAX_PACKET_LEN;
-				continue;
-			}
-			/* Parse the message */
-			for (int index = 0; index < msg_size; ++index)
-			{
-				if (mavlink_parse_char(MAVLINK_COMM_0, MAVLINK_AppData.PassThruIngestBuffer[index], &msg, &msg_status))
+				/* Verify message length. If equal to -1 there is no data on the socket */
+				if(msg_size == -1)
 				{
-					if(msg.msgid != MAVLINK_MSG_ID_HEARTBEAT)
+					msg_size = MAVLINK_MAX_PACKET_LEN;
+					continue;
+				}
+				/* Parse the message */
+				for (int index = 0; index < msg_size; ++index)
+				{
+					if (mavlink_parse_char(MAVLINK_COMM_0, MAVLINK_AppData.PassThruIngestBuffer[index], &msg, &msg_status))
 					{
-						// TODO: Remove
-						if(msg.msgid == MAVLINK_MSG_ID_AUTOPILOT_VERSION)
+						if(msg.msgid != MAVLINK_MSG_ID_HEARTBEAT)
 						{
-							mavlink_autopilot_version_t decodedMsg;
-							mavlink_msg_autopilot_version_decode(&msg, &decodedMsg);
-							OS_printf("capability: %u", decodedMsg.capabilities);
-						}
+							// TODO: Remove
+							if(msg.msgid == MAVLINK_MSG_ID_AUTOPILOT_VERSION)
+							{
+								mavlink_autopilot_version_t decodedMsg;
+								mavlink_msg_autopilot_version_decode(&msg, &decodedMsg);
+								OS_printf("capability: %u", decodedMsg.capabilities);
+							}
 
-						if(msg.msgid == MAVLINK_MSG_ID_COMMAND_LONG)
+							if(msg.msgid == MAVLINK_MSG_ID_COMMAND_LONG)
+							{
+								mavlink_command_long_t 		decodedMsg;
+								mavlink_msg_command_long_decode(&msg, &decodedMsg);
+
+								MAVLINK_HandleCommandLong(decodedMsg);
+							}
+
+							/* Send msg to GCS. Any other message from PX4 is not intended for us */
+							MAVLINK_SendMessage((char *) &MAVLINK_AppData.PassThruIngestBuffer, msg_size); //TODO: does send need thread safety
+						}
+						else
 						{
-							mavlink_command_long_t 		decodedMsg;
-							mavlink_msg_command_long_decode(&msg, &decodedMsg);
-
-							MAVLINK_HandleCommandLong(decodedMsg);
+							mavlink_heartbeat_t decodedMsg;
+							mavlink_msg_heartbeat_decode(&msg, &decodedMsg);
+							MAVLINK_AppData.HkTlm.SystemStatus = decodedMsg.system_status;
+							MAVLINK_AppData.HkTlm.BaseMode = decodedMsg.base_mode;
+							MAVLINK_AppData.HkTlm.CustomMode = decodedMsg.custom_mode;
 						}
-
-						/* Send msg to GCS. Any other message from PX4 is not intended for us */
-						MAVLINK_SendMessage((char *) &MAVLINK_AppData.PassThruIngestBuffer, msg_size); //TODO: does send need thread safety
-					}
-					else
-					{
-						mavlink_heartbeat_t decodedMsg;
-						mavlink_msg_heartbeat_decode(&msg, &decodedMsg);
-						MAVLINK_AppData.HkTlm.SystemStatus = decodedMsg.system_status;
-						MAVLINK_AppData.HkTlm.BaseMode = decodedMsg.base_mode;
-						MAVLINK_AppData.HkTlm.CustomMode = decodedMsg.custom_mode;
 					}
 				}
-			}
-		}while(MAVLINK_AppData.IngestActive == TRUE);
+			}while(MAVLINK_AppData.IngestActive == TRUE);
+		}
 
 		CFE_ES_ExitChildTask();
 	}
@@ -519,47 +523,49 @@ void MAVLINK_ListenerTaskMain(void)
 	Status = CFE_ES_RegisterChildTask();
 	if (Status == CFE_SUCCESS)
 	{
-		/* Ingest Loop */
-		do{
-			/* Receive mavlink message */
-			MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &msg_size);
+		while(MAVLINK_AppData.ListenersAlive == TRUE)
+		{
+			/* Ingest Loop */
+			do{
+				/* Receive mavlink message */
+				MAVLINK_ReadMessage(MAVLINK_AppData.IngestBuffer, &msg_size);
 
-			/* Verify message length. If equal to -1 there is no data on the socket */
-			if(msg_size == -1)
-			{
-				msg_size = MAVLINK_MAX_PACKET_LEN;
-				continue;
-			}
-
-			/* Decode the message */
-			for (int index = 0; index < msg_size; ++index)
-			{
-				if (mavlink_parse_char(MAVLINK_COMM_0, MAVLINK_AppData.IngestBuffer[index], &msg, &msg_status))
+				/* Verify message length. If equal to -1 there is no data on the socket */
+				if(msg_size == -1)
 				{
-					action = MAVLINK_GetMessageAction(msg);
-					if(action == ACTION_HANDLE)
+					msg_size = MAVLINK_MAX_PACKET_LEN;
+					continue;
+				}
+
+				/* Decode the message */
+				for (int index = 0; index < msg_size; ++index)
+				{
+					if (mavlink_parse_char(MAVLINK_COMM_0, MAVLINK_AppData.IngestBuffer[index], &msg, &msg_status))
 					{
-						/* Pass to message router */
-						MAVLINK_MessageRouter(msg);
-						//OS_printf("Handling message\n");
-					}
-					else if(action == ACTION_PASSTHRU)
-					{
-						/* Message Pass Thru */
-						MAVLINK_MessagePassThru(msg);
-						CFE_EVS_SendEvent(MAVLINK_HANDLE_ERR_EID, CFE_EVS_ERROR,
-												"Passing GCS msg to px4 with id: (%u)", msg.msgid);
-					}
-					else
-					{
-						/* Default behavior pass thru */
-						MAVLINK_MessagePassThru(msg);
-						CFE_EVS_SendEvent(MAVLINK_HANDLE_ERR_EID, CFE_EVS_ERROR,
-												"Passing GCS msg to px4 with id: (%u)", msg.msgid);
+						action = MAVLINK_GetMessageAction(msg);
+						if(action == ACTION_HANDLE)
+						{
+							/* Pass to message router */
+							MAVLINK_MessageRouter(msg);
+						}
+						else if(action == ACTION_PASSTHRU)
+						{
+							/* Message Pass Thru */
+							MAVLINK_MessagePassThru(msg);
+							CFE_EVS_SendEvent(MAVLINK_HANDLE_ERR_EID, CFE_EVS_ERROR,
+													"Passing GCS msg to px4 with id: (%u)", msg.msgid);
+						}
+						else
+						{
+							/* Default behavior pass thru */
+							MAVLINK_MessagePassThru(msg);
+							CFE_EVS_SendEvent(MAVLINK_HANDLE_ERR_EID, CFE_EVS_ERROR,
+													"Passing GCS msg to px4 with id: (%u)", msg.msgid);
+						}
 					}
 				}
-			}
-		}while(MAVLINK_AppData.IngestActive == TRUE);
+			}while(MAVLINK_AppData.IngestActive == TRUE);
+		}
 
 		CFE_ES_ExitChildTask();
 	}
@@ -724,7 +730,7 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 	}
 
 	/* Update param with values stored in prmlib and send back to GCS */
-	PRMLIB_GetParamValue(&param_data, &ParamIndex, &ParamCount);
+	PRMLIB_GetParamData(&param_data, &ParamIndex, &ParamCount);
 	MAVLINK_SendParamToGCS(param_data, ParamIndex, ParamCount);
 
 	return Status;
@@ -751,11 +757,11 @@ int32 MAVLINK_HandleRequestParamRead(mavlink_param_request_read_t param)
 	/* Check if index is specified */
 	if(param.param_index == -1)
 	{
-		Status = PRMLIB_GetParamValue(&param_data, &ParamIndex, &ParamCount);
+		Status = PRMLIB_GetParamData(&param_data, &ParamIndex, &ParamCount);
 	}
 	else
 	{
-		Status = PRMLIB_GetParamValueAtIndex(&param_data, ParamIndex);
+		Status = PRMLIB_GetParamDataAtIndex(&param_data, ParamIndex);
 		ParamCount = PRMLIB_GetParamCount();
 	}
 
