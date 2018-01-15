@@ -693,6 +693,7 @@ int32 MAVLINK_HandleRequestParams()
 	/* Iterate over params and send to GCS */
 	for(int i = 0; i < ParamCount; ++i)
 	{
+		PRMLIB_PrintParam(params[i]);
 		MAVLINK_SendParamToGCS(params[i], i, ParamCount);
 	}
 
@@ -717,21 +718,27 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 	param_data.value = param.param_value;
 	param_data.type = param.param_type;
 	strcpy(param_data.name, param.param_id);
+	PRMLIB_PrintParam(param_data);
 
 	/* Check if param exists */
 	if(PRMLIB_ParamExists(param_data) == TRUE)
 	{
+		OS_printf("updating param\n");
 		Status = PRMLIB_UpdateParam(param_data);
 	}
 	else
 	{
 		//TODO: verify expected
-		Status = PRMLIB_AddParam(param_data);
+		OS_printf("adding param\n");
+		//Status = PRMLIB_AddParam(param_data);
 	}
 
-	/* Update param with values stored in prmlib and send back to GCS */
-	PRMLIB_GetParamData(&param_data, &ParamIndex, &ParamCount);
-	MAVLINK_SendParamToGCS(param_data, ParamIndex, ParamCount);
+	if(Status == CFE_SUCCESS)
+	{
+		/* Update param with values stored in prmlib and send back to GCS */
+		PRMLIB_GetParamData(&param_data, &ParamIndex, &ParamCount);
+		MAVLINK_SendParamToGCS(param_data, ParamIndex, ParamCount);
+	}
 
 	return Status;
 }
