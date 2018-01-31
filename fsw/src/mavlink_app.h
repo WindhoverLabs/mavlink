@@ -120,6 +120,15 @@ typedef struct
 
 } MAVLINK_AppData_t;
 
+typedef struct
+{
+	char name[PRMLIB_MSG_PARAM_NAME_LEN];
+    float value;
+    uint8 type;
+    uint8 vehicle_id;
+    uint8 component_id;
+} MAVLINK_ParamData_t;
+
 /************************************************************************
 ** External Global Variables
 *************************************************************************/
@@ -352,7 +361,7 @@ void MAVLINK_MessageRouter(mavlink_message_t msg);
 void MAVLINK_ProcessHeartbeat(mavlink_heartbeat_t heartbeat);
 void MAVLINK_SendHeartbeat(void);
 void MAVLINK_SendParamsToGCS(void);
-void MAVLINK_SendParamToGCS(PRMLIB_ParamData_t param_data, uint16 param_index, uint16 param_count);
+void MAVLINK_SendParamToGCS(MAVLINK_ParamData_t param_data, uint16 param_index, uint16 param_count);
 MAVLINK_MsgAction_t MAVLINK_GetMessageAction(mavlink_message_t msg);
 int32 MAVLINK_HandleRequestParams();
 int32 MAVLINK_HandleSetParam(mavlink_param_set_t param);
