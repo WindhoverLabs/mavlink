@@ -708,15 +708,15 @@ int32 MAVLINK_HandleRequestParams()
 	for(int i = 0; i < ParamCount; ++i)
 	{
 		OS_printf("Sendin param\n");
-		PRMLIB_PrintParam(params[i]);
+		//PRMLIB_PrintParam(params[i]);
 
 		/* Copy into mavlink format */
 		param_data.vehicle_id = MAVLINK_SYSTEM_ID;
 		param_data.component_id = MAVLINK_COMPONENT_ID;
-		//memcpy(&param_data.value, &params[i].value, sizeof(param_data.value));
 		param_data.type = params[i].type;
 		strcpy(param_data.name, params[i].name);
-
+		memcpy(&param_data.value, &params[i].value, sizeof(param_data.value));
+		MAVLINK_PrintParam(param_data);
 		MAVLINK_SendParamToGCS(param_data, i, ParamCount);
 	}
 
@@ -742,11 +742,12 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 	param_data.vehicle_id = param.target_system;
 	param_data.component_id = param.target_component;
 	param_data.type = param.param_type;
-	memcpy(&param_data.value, &param.param_value, sizeof(param_lib_data.value));
+	memcpy(&param_data.value, &param.param_value, sizeof(param_data.value));
 	strcpy(param_data.name, param.param_id);
 
 	if(MAVLINK_VerifyParamForAirliner(param_data) != TRUE)
 	{
+		OS_printf("cmd not for us\n");
 		Status = -1;
 		goto MAVLINK_HandleSetParam_Exit_Tag;
 	}
@@ -789,11 +790,11 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 
 	/* Update param with values stored in prmlib and send back to GCS */
 	PRMLIB_GetParamData(&param_lib_data, &ParamIndex, &ParamCount);
-
+	PRMLIB_PrintParam(param_lib_data);
 	/* Copy data from lib back to mav format */
 	param_data.type = param_lib_data.type;
 	strcpy(param_data.name, param_lib_data.name);
-	PRMLIB_GetParamValue(param_lib_data, &param_data.value);
+	memcpy(&param_data.value, &param_lib_data.value, sizeof(param_data.value));
 
 	MAVLINK_SendParamToGCS(param_data, ParamIndex, ParamCount);
 
@@ -966,18 +967,47 @@ void MAVLINK_SendParamToGCS(MAVLINK_ParamData_t param_data, uint16 param_index, 
 	uint16 msg_size 		= 0;
 	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
 
+	OS_printf("Sending to GCS\n\n\n");
+	MAVLINK_PrintParam(param_data);
 	/* Copy values from params msg mavlink msg */
 	param.param_index = param_index;
 	param.param_count = param_count;
 	strcpy(param.param_id, param_data.name);
 	param.param_id[MAVLINK_MSG_PARAM_VALUE_FIELD_PARAM_ID_LEN] = '\0';
 	param.param_type = param_data.type;
-	memcpy(&param_data.value, &param.param_value, sizeof(param_data.value));
+	memcpy(&param.param_value, &param_data.value, sizeof(param_data.value));
 
 	/* Encode mavlink message and send to ground station */
 	mavlink_msg_param_value_encode(MAVLINK_SYSTEM_ID, MAVLINK_COMPONENT_ID, &msg, &param);
 	msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
     MAVLINK_SendMessage((char *) &msgBuf, msg_size);
+    OS_printf("Sent to GCS\n\n\n");
+}
+
+void MAVLINK_PrintParam(MAVLINK_ParamData_t param) // TODO Remove
+{
+	uint8 val_uint8 	= 0;
+	int8 val_int8 		= 0;
+	uint16 val_uint16 	= 0;
+	int16 val_int16		= 0;
+	uint32 val_uint32	= 0;
+	int32 val_int32 	= 0;
+
+	OS_printf("name: %s \n", param.name);
+	OS_printf("type: %u \n", param.type);
+	switch(param.type)
+	{
+		case TYPE_UINT32:
+			memcpy(&val_uint32, &param.value, sizeof(uint32));
+			OS_printf("uint value: %u \n", val_uint32);
+			break;
+		case TYPE_REAL32:
+			OS_printf("value: %f \n", param.value);
+			break;
+		default:
+			//unsupported type
+			break;
+	}
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
