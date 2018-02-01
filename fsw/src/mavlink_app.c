@@ -707,12 +707,13 @@ int32 MAVLINK_HandleRequestParams()
 	/* Iterate over params and send to GCS */
 	for(int i = 0; i < ParamCount; ++i)
 	{
-		//PRMLIB_PrintParam(params[i]);
+		OS_printf("Sendin param\n");
+		PRMLIB_PrintParam(params[i]);
 
 		/* Copy into mavlink format */
 		param_data.vehicle_id = MAVLINK_SYSTEM_ID;
 		param_data.component_id = MAVLINK_COMPONENT_ID;
-		param_data.value = params[i].value;
+		//memcpy(&param_data.value, &params[i].value, sizeof(param_data.value));
 		param_data.type = params[i].type;
 		strcpy(param_data.name, params[i].name);
 
@@ -735,13 +736,13 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 	uint16 				ParamCount = 0;
 	uint16 				ParamIndex = 0;
 	PRMLIB_UpdatedParamMsg_t UpdatedMsg = {0};
-	CFE_SB_MsgPtr_t MsgPtr = &UpdatedMsg;
-	OS_printf("new value: %lf\n",param.param_value);
+	CFE_SB_MsgPtr_t MsgPtr = (CFE_SB_MsgPtr_t) &UpdatedMsg;
+
 	/* Copy data from msg to mav format */
 	param_data.vehicle_id = param.target_system;
 	param_data.component_id = param.target_component;
-	param_data.value = param.param_value;
 	param_data.type = param.param_type;
+	memcpy(&param_data.value, &param.param_value, sizeof(param_lib_data.value));
 	strcpy(param_data.name, param.param_id);
 
 	if(MAVLINK_VerifyParamForAirliner(param_data) != TRUE)
@@ -751,9 +752,10 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 	}
 
 	/* Copy data from msg to lib format */
-	param_lib_data.value = param.param_value;
 	param_lib_data.type = param.param_type;
 	strcpy(param_lib_data.name, param.param_id);
+	PRMLIB_SetParamValue(&param_lib_data, &param_data.value);
+	PRMLIB_PrintParam(param_lib_data);
 
 	/* Check if param exists */
 	if(PRMLIB_ParamExists(param_lib_data.name) == TRUE)
@@ -789,9 +791,9 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 	PRMLIB_GetParamData(&param_lib_data, &ParamIndex, &ParamCount);
 
 	/* Copy data from lib back to mav format */
-	param_data.value = param_lib_data.value;
 	param_data.type = param_lib_data.type;
 	strcpy(param_data.name, param_lib_data.name);
+	PRMLIB_GetParamValue(param_lib_data, &param_data.value);
 
 	MAVLINK_SendParamToGCS(param_data, ParamIndex, ParamCount);
 
@@ -833,7 +835,7 @@ int32 MAVLINK_HandleRequestParamRead(mavlink_param_request_read_t param)
 	}
 
 	/* Copy data back into mav format */
-	param_data.value = param_lib_data.value;
+	PRMLIB_GetParamValue(param_lib_data, &param_data.value);
 	param_data.type = param_lib_data.type;
 	strcpy(param_data.name, param_lib_data.name);
 
@@ -967,103 +969,15 @@ void MAVLINK_SendParamToGCS(MAVLINK_ParamData_t param_data, uint16 param_index, 
 	/* Copy values from params msg mavlink msg */
 	param.param_index = param_index;
 	param.param_count = param_count;
-	strcpy(&param.param_id, param_data.name);
+	strcpy(param.param_id, param_data.name);
 	param.param_id[MAVLINK_MSG_PARAM_VALUE_FIELD_PARAM_ID_LEN] = '\0';
 	param.param_type = param_data.type;
-	set_param_value(param_data, &param.param_value);
+	memcpy(&param_data.value, &param.param_value, sizeof(param_data.value));
 
 	/* Encode mavlink message and send to ground station */
 	mavlink_msg_param_value_encode(MAVLINK_SYSTEM_ID, MAVLINK_COMPONENT_ID, &msg, &param);
 	msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
     MAVLINK_SendMessage((char *) &msgBuf, msg_size);
-}
-
-void get_param_value(MAVLINK_ParamData_t param, void* val)
-{
-	uint8 val_uint8 = 0;
-	int8 val_int8 = 0;
-	uint16 val_uint16 = 0;
-	int16 val_int16 = 0;
-	uint32 val_uint32 = 0;
-	int32 val_int32 = 0;
-
-	switch(param.type)
-	{
-		case MAV_PARAM_TYPE_UINT8:
-			val_uint8 = (uint8) param.value;
-			memcpy(val, &val_uint8, sizeof(param.value));
-			break;
-		case MAV_PARAM_TYPE_INT8:
-			val_int8 = (int8) param.value;
-			memcpy(val, &val_int8, sizeof(param.value));
-			break;
-		case MAV_PARAM_TYPE_UINT16:
-			val_uint16 = (uint16) param.value;
-			memcpy(val, &val_uint16, sizeof(param.value));
-			break;
-		case MAV_PARAM_TYPE_INT16:
-			val_int16 = (int16) param.value;
-			memcpy(val, &val_int16, sizeof(param.value));
-			break;
-		case MAV_PARAM_TYPE_UINT32:
-			val_uint32 = (uint32) param.value;
-			memcpy(val, &val_uint32, sizeof(param.value));
-			break;
-		case MAV_PARAM_TYPE_INT32:
-			val_int32 = (int32) param.value;
-			memcpy(val, &val_int32, sizeof(param.value));
-			break;
-		case MAV_PARAM_TYPE_REAL32:
-			memcpy(val, &param.value, sizeof(param.value));
-			break;
-		default:
-			//unsupported type
-			break;
-	}
-}
-
-void set_param_value(MAVLINK_ParamData_t param, void* val)
-{
-	uint8 val_uint8 = 0;
-	int8 val_int8 = 0;
-	uint16 val_uint16 = 0;
-	int16 val_int16 = 0;
-	uint32 val_uint32 = 0;
-	int32 val_int32 = 0;
-
-	switch(param.type)
-	{
-		case MAV_PARAM_TYPE_UINT8:
-			memcpy(&val_uint8, val, sizeof(param.value));
-			param.value = val_uint8;
-			break;
-		case MAV_PARAM_TYPE_INT8:
-			memcpy(&val_int8, val, sizeof(param.value));
-			param.value = val_int8;
-			break;
-		case MAV_PARAM_TYPE_UINT16:
-			memcpy(&val_uint16, val, sizeof(param.value));
-			param.value = val_uint16;
-			break;
-		case MAV_PARAM_TYPE_INT16:
-			memcpy(&val_int16, val, sizeof(param.value));
-			param.value = val_int16;
-			break;
-		case MAV_PARAM_TYPE_UINT32:
-			memcpy(&val_uint32, val, sizeof(param.value));
-			param.value = val_uint32;
-			break;
-		case MAV_PARAM_TYPE_INT32:
-			memcpy(&val_int32, val, sizeof(param.value));
-			param.value = val_int32;
-			break;
-		case MAV_PARAM_TYPE_REAL32:
-			memcpy(&param.value, val, sizeof(param.value));
-			break;
-		default:
-			//unsupported type
-			break;
-	}
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
