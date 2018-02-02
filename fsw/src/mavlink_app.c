@@ -489,9 +489,9 @@ void MAVLINK_PassThruListenerTaskMain(void)
 						{
 							mavlink_heartbeat_t decodedMsg;
 							mavlink_msg_heartbeat_decode(&msg, &decodedMsg);
-							MAVLINK_AppData.HkTlm.SystemStatus = decodedMsg.system_status;
-							MAVLINK_AppData.HkTlm.BaseMode = decodedMsg.base_mode;
-							MAVLINK_AppData.HkTlm.CustomMode = decodedMsg.custom_mode;
+							memcpy(&MAVLINK_AppData.HkTlm.SystemStatus, &decodedMsg.system_status, sizeof(uint8));
+							memcpy(&MAVLINK_AppData.HkTlm.BaseMode, &decodedMsg.base_mode, sizeof(uint8));
+							memcpy(&MAVLINK_AppData.HkTlm.CustomMode, &decodedMsg.custom_mode, sizeof(uint32));
 						}
 					}
 				}
