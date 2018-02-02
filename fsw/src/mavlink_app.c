@@ -467,20 +467,20 @@ void MAVLINK_PassThruListenerTaskMain(void)
 						if(msg.msgid != MAVLINK_MSG_ID_HEARTBEAT)
 						{
 							// TODO: Remove
-							if(msg.msgid == MAVLINK_MSG_ID_AUTOPILOT_VERSION)
-							{
-								mavlink_autopilot_version_t decodedMsg;
-								mavlink_msg_autopilot_version_decode(&msg, &decodedMsg);
-								OS_printf("capability: %u", decodedMsg.capabilities);
-							}
-
-							if(msg.msgid == MAVLINK_MSG_ID_COMMAND_LONG)
-							{
-								mavlink_command_long_t 		decodedMsg;
-								mavlink_msg_command_long_decode(&msg, &decodedMsg);
-
-								MAVLINK_HandleCommandLong(decodedMsg);
-							}
+//							if(msg.msgid == MAVLINK_MSG_ID_AUTOPILOT_VERSION)
+//							{
+//								mavlink_autopilot_version_t decodedMsg;
+//								mavlink_msg_autopilot_version_decode(&msg, &decodedMsg);
+//								OS_printf("capability: %u", decodedMsg.capabilities);
+//							}
+//
+//							if(msg.msgid == MAVLINK_MSG_ID_COMMAND_LONG)
+//							{
+//								mavlink_command_long_t 		decodedMsg;
+//								mavlink_msg_command_long_decode(&msg, &decodedMsg);
+//
+//								MAVLINK_HandleCommandLong(decodedMsg);
+//							}
 
 							/* Send msg to GCS. Any other message from PX4 is not intended for us */
 							MAVLINK_SendMessage((char *) &MAVLINK_AppData.PassThruIngestBuffer, msg_size); //TODO: does send need thread safety
@@ -622,9 +622,8 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 			mavlink_param_set_t decodedMsg;
 			mavlink_msg_param_set_decode(&msg, &decodedMsg);
 			CFE_EVS_SendEvent(MAVLINK_HANDLE_INF_EID, CFE_EVS_INFORMATION,
-										  "QGC setting param: %s = %f",
-										  decodedMsg.param_id,
-										  decodedMsg.param_value);
+										  "QGC setting param: %s",
+										  decodedMsg.param_id);
 
 			Status = MAVLINK_HandleSetParam(decodedMsg);
 			break;
@@ -707,16 +706,12 @@ int32 MAVLINK_HandleRequestParams()
 	/* Iterate over params and send to GCS */
 	for(int i = 0; i < ParamCount; ++i)
 	{
-		OS_printf("Sendin param\n");
-		//PRMLIB_PrintParam(params[i]);
-
 		/* Copy into mavlink format */
 		param_data.vehicle_id = MAVLINK_SYSTEM_ID;
 		param_data.component_id = MAVLINK_COMPONENT_ID;
 		param_data.type = params[i].type;
 		strcpy(param_data.name, params[i].name);
 		memcpy(&param_data.value, &params[i].value, sizeof(param_data.value));
-		MAVLINK_PrintParam(param_data);
 		MAVLINK_SendParamToGCS(param_data, i, ParamCount);
 	}
 
@@ -747,7 +742,6 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 
 	if(MAVLINK_VerifyParamForAirliner(param_data) != TRUE)
 	{
-		OS_printf("cmd not for us\n");
 		Status = -1;
 		goto MAVLINK_HandleSetParam_Exit_Tag;
 	}
@@ -756,24 +750,22 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 	param_lib_data.type = param.param_type;
 	strcpy(param_lib_data.name, param.param_id);
 	PRMLIB_SetParamValue(&param_lib_data, &param_data.value);
-	PRMLIB_PrintParam(param_lib_data);
 
 	/* Check if param exists */
 	if(PRMLIB_ParamExists(param_lib_data.name) == TRUE)
 	{
-		OS_printf("updating param\n");
 		Status = PRMLIB_UpdateParam(param_lib_data);
 	}
 	else
 	{
 		//TODO: verify expected
-		OS_printf("adding param\n");
 		//Status = PRMLIB_AddParam(param_data);
 	}
 
 	if(Status != CFE_SUCCESS)
 	{
-		OS_printf("error w param lib\n");
+		CFE_EVS_SendEvent(MAVLINK_HANDLE_ERR_EID, CFE_EVS_ERROR,
+						 "Error setting param in param lib");
 		goto MAVLINK_HandleSetParam_Exit_Tag;
 	}
 
@@ -784,13 +776,14 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 
 	if(Status != CFE_SUCCESS)
 	{
-		OS_printf("error sending msg\n");
+		CFE_EVS_SendEvent(MAVLINK_HANDLE_ERR_EID, CFE_EVS_ERROR,
+						 "Error sending set param to SB");
 		goto MAVLINK_HandleSetParam_Exit_Tag;
 	}
 
 	/* Update param with values stored in prmlib and send back to GCS */
 	PRMLIB_GetParamData(&param_lib_data, &ParamIndex, &ParamCount);
-	PRMLIB_PrintParam(param_lib_data);
+
 	/* Copy data from lib back to mav format */
 	param_data.type = param_lib_data.type;
 	strcpy(param_data.name, param_lib_data.name);
@@ -799,6 +792,13 @@ int32 MAVLINK_HandleSetParam(mavlink_param_set_t param)
 	MAVLINK_SendParamToGCS(param_data, ParamIndex, ParamCount);
 
 MAVLINK_HandleSetParam_Exit_Tag:
+
+	if (Status != CFE_SUCCESS)
+	{
+		CFE_EVS_SendEvent(MAVLINK_HANDLE_ERR_EID, CFE_EVS_ERROR,
+						 "Error encountered setting param: (%s)", param.param_id);
+	}
+
 	return Status;
 }
 
@@ -967,8 +967,6 @@ void MAVLINK_SendParamToGCS(MAVLINK_ParamData_t param_data, uint16 param_index, 
 	uint16 msg_size 		= 0;
 	uint8 msgBuf[MAVLINK_MAX_PACKET_LEN] = {0};
 
-	OS_printf("Sending to GCS\n\n\n");
-	MAVLINK_PrintParam(param_data);
 	/* Copy values from params msg mavlink msg */
 	param.param_index = param_index;
 	param.param_count = param_count;
@@ -981,7 +979,6 @@ void MAVLINK_SendParamToGCS(MAVLINK_ParamData_t param_data, uint16 param_index, 
 	mavlink_msg_param_value_encode(MAVLINK_SYSTEM_ID, MAVLINK_COMPONENT_ID, &msg, &param);
 	msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
     MAVLINK_SendMessage((char *) &msgBuf, msg_size);
-    OS_printf("Sent to GCS\n\n\n");
 }
 
 void MAVLINK_PrintParam(MAVLINK_ParamData_t param) // TODO Remove
