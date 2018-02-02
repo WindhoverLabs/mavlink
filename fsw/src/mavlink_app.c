@@ -464,9 +464,10 @@ void MAVLINK_PassThruListenerTaskMain(void)
 				{
 					if (mavlink_parse_char(MAVLINK_COMM_0, MAVLINK_AppData.PassThruIngestBuffer[index], &msg, &msg_status))
 					{
-						if(msg.msgid != MAVLINK_MSG_ID_HEARTBEAT)
-						{
-							// TODO: Remove
+						MAVLINK_SendMessage((char *) &MAVLINK_AppData.PassThruIngestBuffer, msg_size); //TODO: does send need thread safety
+//						if(msg.msgid != MAVLINK_MSG_ID_HEARTBEAT)
+//						{
+//							// TODO: Remove
 //							if(msg.msgid == MAVLINK_MSG_ID_AUTOPILOT_VERSION)
 //							{
 //								mavlink_autopilot_version_t decodedMsg;
@@ -481,18 +482,18 @@ void MAVLINK_PassThruListenerTaskMain(void)
 //
 //								MAVLINK_HandleCommandLong(decodedMsg);
 //							}
-
-							/* Send msg to GCS. Any other message from PX4 is not intended for us */
-							MAVLINK_SendMessage((char *) &MAVLINK_AppData.PassThruIngestBuffer, msg_size); //TODO: does send need thread safety
-						}
-						else
-						{
-							mavlink_heartbeat_t decodedMsg;
-							mavlink_msg_heartbeat_decode(&msg, &decodedMsg);
-							memcpy(&MAVLINK_AppData.HkTlm.SystemStatus, &decodedMsg.system_status, sizeof(uint8));
-							memcpy(&MAVLINK_AppData.HkTlm.BaseMode, &decodedMsg.base_mode, sizeof(uint8));
-							memcpy(&MAVLINK_AppData.HkTlm.CustomMode, &decodedMsg.custom_mode, sizeof(uint32));
-						}
+//
+//							/* Send msg to GCS. Any other message from PX4 is not intended for us */
+//							MAVLINK_SendMessage((char *) &MAVLINK_AppData.PassThruIngestBuffer, msg_size); //TODO: does send need thread safety
+//						}
+//						else
+//						{
+//							mavlink_heartbeat_t decodedMsg;
+//							mavlink_msg_heartbeat_decode(&msg, &decodedMsg);
+//							memcpy(&MAVLINK_AppData.HkTlm.SystemStatus, &decodedMsg.system_status, sizeof(uint8));
+//							memcpy(&MAVLINK_AppData.HkTlm.BaseMode, &decodedMsg.base_mode, sizeof(uint8));
+//							memcpy(&MAVLINK_AppData.HkTlm.CustomMode, &decodedMsg.custom_mode, sizeof(uint32));
+//						}
 					}
 				}
 			}while(MAVLINK_AppData.IngestActive == TRUE);
@@ -613,8 +614,8 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 		{
 			CFE_EVS_SendEvent(MAVLINK_HANDLE_INF_EID, CFE_EVS_INFORMATION,
 							  "QGC requesting param list");
-
-			Status = MAVLINK_HandleRequestParams();
+			MAVLINK_MessagePassThru(msg);
+			//Status = MAVLINK_HandleRequestParams();
 			break;
 		}
 		case MAVLINK_MSG_ID_PARAM_SET:
@@ -634,8 +635,9 @@ void MAVLINK_MessageRouter(mavlink_message_t msg)
 			mavlink_msg_param_request_read_decode(&msg, &decodedMsg);
 			CFE_EVS_SendEvent(MAVLINK_HANDLE_INF_EID, CFE_EVS_INFORMATION,
 							  "QGC requseting specified param at index: %i", decodedMsg.param_index);
+			MAVLINK_MessagePassThru(msg);
 
-			Status = MAVLINK_HandleRequestParamRead(decodedMsg);
+			//Status = MAVLINK_HandleRequestParamRead(decodedMsg);
 			break;
 		}
 		case MAVLINK_MSG_ID_COMMAND_LONG:
@@ -951,7 +953,7 @@ void MAVLINK_SendHeartbeat(void)
 											 autopilot, base_mode, custom_mode, system_status);
 		msg_size = mavlink_msg_to_send_buffer(msgBuf, &msg);
 
-		MAVLINK_SendMessage((char *) &msgBuf, msg_size);
+		//MAVLINK_SendMessage((char *) &msgBuf, msg_size);
 	}
 }
 
