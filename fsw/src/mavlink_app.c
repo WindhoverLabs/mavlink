@@ -411,12 +411,13 @@ void MAVLINK_DisableConnection(void)
 MAVLINK_MsgAction_t MAVLINK_GetMessageAction(mavlink_message_t msg)
 {
 	MAVLINK_MsgAction_t 	action = ACTION_PASSTHRU;
+    int i = 0;
 
 	/* Lock the mutex */
 	OS_MutSemTake(MAVLINK_AppData.ActionMapMutex);
 
 	/* Search for msg id in action map  */
-	for (int i = 0; i < MAVLINK_ACTION_MAP_ENTRIES; ++i)
+	for (i = 0; i < MAVLINK_ACTION_MAP_ENTRIES; ++i)
 	{
 		if(MAVLINK_AppData.ActionMapPtr->ActionMap[i].MsgId == msg.msgid)
 		{
@@ -442,6 +443,7 @@ void MAVLINK_PassThruListenerTaskMain(void)
 	mavlink_message_t 		msg;
 	mavlink_status_t 		msg_status;
     uint32 					msg_size = MAVLINK_MAX_PACKET_LEN;
+    int index = 0;
 
 	Status = CFE_ES_RegisterChildTask();
 	if (Status == CFE_SUCCESS)
@@ -460,7 +462,7 @@ void MAVLINK_PassThruListenerTaskMain(void)
 					continue;
 				}
 				/* Parse the message */
-				for (int index = 0; index < msg_size; ++index)
+				for (index = 0; index < msg_size; ++index)
 				{
 					if (mavlink_parse_char(MAVLINK_COMM_0, MAVLINK_AppData.PassThruIngestBuffer[index], &msg, &msg_status))
 					{
@@ -520,6 +522,7 @@ void MAVLINK_ListenerTaskMain(void)
 	mavlink_status_t 		msg_status;
     uint32 					msg_size = MAVLINK_MAX_PACKET_LEN;
     MAVLINK_MsgAction_t		action = ACTION_PASSTHRU;
+    int index = 0;
 
 	Status = CFE_ES_RegisterChildTask();
 	if (Status == CFE_SUCCESS)
@@ -539,7 +542,7 @@ void MAVLINK_ListenerTaskMain(void)
 				}
 
 				/* Decode the message */
-				for (int index = 0; index < msg_size; ++index)
+				for (index = 0; index < msg_size; ++index)
 				{
 					if (mavlink_parse_char(MAVLINK_COMM_0, MAVLINK_AppData.IngestBuffer[index], &msg, &msg_status))
 					{
@@ -701,12 +704,13 @@ int32 MAVLINK_HandleRequestParams()
 	uint16 				ParamCount = 0;
 	MAVLINK_ParamData_t param_data = {0};
 	PRMLIB_ParamData_t  params[PRMLIB_PARAM_TBL_MAX_ENTRY];
+    int i = 0;
 
 	/* Get params from lib */
 	PRMLIB_GetParams(params, &ParamCount);
 
 	/* Iterate over params and send to GCS */
-	for(int i = 0; i < ParamCount; ++i)
+	for(i = 0; i < ParamCount; ++i)
 	{
 		/* Copy into mavlink format */
 		param_data.vehicle_id = MAVLINK_SYSTEM_ID;
