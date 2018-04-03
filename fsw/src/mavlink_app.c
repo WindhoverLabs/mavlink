@@ -351,7 +351,7 @@ int32 MAVLINK_InitChildTasks(void)
 								   NULL,
 								   MAVLINK_LISTENER_TASK_STACK_SIZE,
 								   MAVLINK_LISTENER_TASK_PRIORITY,
-								   0);
+								   MAVLINK_LISTENER_TASK_FLAGS);
 	if (Status != CFE_SUCCESS)
 	{
 		goto MAVLINK_InitListenerTask_Exit_Tag;
@@ -363,7 +363,7 @@ int32 MAVLINK_InitChildTasks(void)
 								   NULL,
 								   MAVLINK_LISTENER_TASK_STACK_SIZE,
 								   MAVLINK_LISTENER_TASK_PRIORITY,
-								   0);
+								   MAVLINK_LISTENER_TASK_FLAGS);
 	if (Status != CFE_SUCCESS)
 	{
 		goto MAVLINK_InitListenerTask_Exit_Tag;
