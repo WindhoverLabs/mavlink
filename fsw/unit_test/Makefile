@@ -67,7 +67,7 @@ UT_DEFINES := -DUT_VERBOSE
 # Setup the source path for this build
 #
 VPATH := . \
-         $(CFS_MISSION)/tools/ut_assert/src \
+         $(CFS_MISSION)/core/ut_assert/src \
          $(OSAL)/ut_assert/src \
          $(APPDIR)/fsw/src
 
@@ -75,7 +75,7 @@ VPATH := . \
 # Setup the include path for this build for cFE, OSAL, PSP, and ut_assert.
 #
 FRAMEWORK_INC := -I. \
-                 -I$(CFS_MISSION)/tools/ut_assert/inc \
+                 -I$(CFS_MISSION)/core/ut_assert/inc \
                  -I$(CFE_CORE_SRC)/inc \
                  -I$(CFE_CORE_SRC)/time \
                  -I$(OSAL_SRC)/inc \
