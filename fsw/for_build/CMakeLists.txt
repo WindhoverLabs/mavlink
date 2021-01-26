@@ -1,5 +1,5 @@
 
-add_airliner_app_def(mavlink
+buildliner_add_app_def(mavlink
     FILE MAVLINK
     SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/../src/mavlink_app.c
@@ -27,7 +27,7 @@ add_airliner_app_def(mavlink
         ${PROJECT_SOURCE_DIR}/apps/mavlink/fsw/platform_inc  
 )
 
-add_airliner_app_unit_test(MAVLINK-UT
+buildliner_add_app_unit_test(MAVLINK-UT
     UTASSERT
     SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/../unit_test/mavlink_app_test.c
