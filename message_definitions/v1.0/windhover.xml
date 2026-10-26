@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<mavlink>
+  <include>development.xml</include>
+  <version>1</version>
+  <dialect>200</dialect>
+  <messages>
+    <message id="52600" name="TGTNG_IMPACT">
+      <description>Current and forward-projected payload impact solution from TGTNG. Angles use the vehicle body FRD frame.</description>
+      <field type="uint64_t" name="timestamp" units="us">PX4 monotonic publication time.</field>
+      <field type="uint64_t" name="timestamp_sample" units="us">Oldest source-state sample time used by the current solution.</field>
+      <field type="float[3]" name="current_impact_ned_m" units="m">Current impact coordinates in the active local NED frame. Values are NaN when current_valid is zero.</field>
+      <field type="float" name="current_time_to_impact_s" units="s" invalid="NaN">Payload flight time for the current solution.</field>
+      <field type="float" name="current_impact_azimuth_deg" units="deg" invalid="NaN">Current impact azimuth, zero forward and positive right.</field>
+      <field type="float" name="current_impact_elevation_deg" units="deg" invalid="NaN">Current impact elevation, zero in the body XY plane and positive upward.</field>
+      <field type="float[8]" name="projected_impact_azimuth_deg" units="deg">Projected body-frame impact azimuths at equally spaced release times. Invalid entries are NaN.</field>
+      <field type="float[8]" name="projected_impact_elevation_deg" units="deg">Projected body-frame impact elevations at equally spaced release times. Invalid entries are NaN.</field>
+      <field type="float" name="projection_horizon_s" units="s">Time offset of projection sample seven.</field>
+      <field type="uint8_t" name="model_version">Impact model identifier.</field>
+      <field type="uint8_t" name="ground_source">Impact-surface source identifier.</field>
+      <field type="uint8_t" name="current_valid">One when the current solution is valid.</field>
+      <field type="uint8_t" name="projection_valid_mask" display="bitmask">Bit i validates projected sample i.</field>
+    </message>
+    <message id="52601" name="TGTNG_STATUS">
+      <description>TGTNG source health, freshness, semantic validity, and readiness.</description>
+      <field type="uint64_t" name="timestamp" units="us">PX4 monotonic publication time.</field>
+      <field type="uint32_t" name="cycle_count">Completed TGTNG cycles.</field>
+      <field type="uint32_t[5]" name="input_age_ms" units="ms">Attitude, local position, global position, vehicle status, and estimator status ages. UINT32_MAX means unavailable.</field>
+      <field type="uint8_t" name="mode">TGTNG application mode.</field>
+      <field type="uint8_t" name="profile">TGTNG impact-model profile.</field>
+      <field type="uint8_t" name="health_state">TGTNG health state.</field>
+      <field type="uint8_t" name="readiness_state">TGTNG data readiness state.</field>
+      <field type="uint8_t" name="required_flags" display="bitmask">Required source mask.</field>
+      <field type="uint8_t" name="present_flags" display="bitmask">Sources observed at least once.</field>
+      <field type="uint8_t" name="fresh_flags" display="bitmask">Sources inside their freshness timeout.</field>
+      <field type="uint8_t" name="valid_flags" display="bitmask">Sources passing semantic checks.</field>
+    </message>
+  </messages>
+</mavlink>
