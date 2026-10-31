@@ -3,6 +3,41 @@
   <include>development.xml</include>
   <version>1</version>
   <dialect>200</dialect>
+  <enums>
+    <enum name="MAV_CMD">
+      <entry value="31015" name="MAV_CMD_WINDHOVER_STATION_SELECT" hasLocation="false" isDestination="false">
+        <description>Select a logical Station Control payload station.</description>
+        <param index="1" label="Station" minValue="0" maxValue="16" increment="1">Station ID. Zero deselects.</param>
+      </entry>
+      <entry value="31016" name="MAV_CMD_WINDHOVER_STATION_RELEASE" hasLocation="false" isDestination="false">
+        <description>Release the currently selected Station Control payload station.</description>
+      </entry>
+      <entry value="31017" name="MAV_CMD_WINDHOVER_STATION_SET_ARMED" hasLocation="false" isDestination="false">
+        <description>Set the system-wide Station Control release authorization.</description>
+        <param index="1" label="State" enum="STATION_CONTROL_ARMING_STATE">SAFE or ARMED.</param>
+      </entry>
+      <entry value="31018" name="MAV_CMD_WINDHOVER_SET_GROUND_TARGET" hasLocation="true" isDestination="true">
+        <description>Set the ground target used by TGTNG's fixed-wing inverse-aim guidance. Send in COMMAND_INT using MAV_FRAME_GLOBAL; param7 is target elevation AMSL.</description>
+        <param index="5" label="Latitude">Target latitude in degrees.</param>
+        <param index="6" label="Longitude">Target longitude in degrees.</param>
+        <param index="7" label="Elevation">Target elevation above mean sea level in metres.</param>
+      </entry>
+      <entry value="31019" name="MAV_CMD_WINDHOVER_SET_GROUND_TRACK" hasLocation="false" isDestination="false">
+        <description>Enable or disable the fixed-wing lateral ground-track inverse-aim override. This never releases a payload.</description>
+        <param index="1" label="Enable">0 disables, 1 enables.</param>
+        <param index="2" label="Bearing">Optional approach bearing clockwise from north in degrees.</param>
+        <param index="3" label="Bearing explicit">1 uses param2; otherwise derive bearing from aircraft to target on activation.</param>
+      </entry>
+      <entry value="31020" name="MAV_CMD_WINDHOVER_STATION_AUTO_RELEASE" hasLocation="false" isDestination="false">
+        <description>Enable or disable one-shot automatic release of the selected payload station at closest approach to the ground target.</description>
+        <param index="1" label="Auto Release" enum="MAV_BOOL">0 disables; 1 enables. Enabling is denied unless vehicle release and targeting prerequisites are ready.</param>
+      </entry>
+    </enum>
+    <enum name="STATION_CONTROL_ARMING_STATE">
+      <entry value="0" name="STATION_CONTROL_ARMING_STATE_SAFE"><description>Payload release is safe.</description></entry>
+      <entry value="1" name="STATION_CONTROL_ARMING_STATE_ARMED"><description>Payload release is armed.</description></entry>
+    </enum>
+  </enums>
   <messages>
     <message id="52600" name="TGTNG_IMPACT">
       <description>Current and forward-projected payload impact solution from TGTNG. Angles use the vehicle body FRD frame.</description>
@@ -16,9 +51,22 @@
       <field type="float[8]" name="projected_impact_elevation_deg" units="deg">Projected body-frame impact elevations at equally spaced release times. Invalid entries are NaN.</field>
       <field type="float" name="projection_horizon_s" units="s">Time offset of projection sample seven.</field>
       <field type="uint8_t" name="model_version">Impact model identifier.</field>
-      <field type="uint8_t" name="ground_source">Impact-surface source identifier.</field>
+      <field type="uint8_t" name="ground_source">Impact-surface source: 0 none, 1 distance to the ground, 2 estimator terrain, 3 home altitude plus offset, 4 configured offset above mean sea level, 5 explicit ground-target elevation. 3 to 5 are assumed, not measured.</field>
       <field type="uint8_t" name="current_valid">One when the current solution is valid.</field>
       <field type="uint8_t" name="projection_valid_mask" display="bitmask">Bit i validates projected sample i.</field>
+      <extensions/>
+      <field type="float" name="height_above_ground_m" units="m" invalid="NaN">Release point above the impact surface.</field>
+      <field type="float" name="ground_range_m" units="m" invalid="NaN">Horizontal distance from the vehicle to the current impact point.</field>
+      <field type="float" name="ground_sigma_m" units="m" invalid="NaN">1-sigma impact-surface height uncertainty.</field>
+      <field type="float" name="time_to_impact_sigma_s" units="s" invalid="NaN">1-sigma time-to-impact uncertainty.</field>
+      <field type="float" name="impact_horizontal_sigma_m" units="m" invalid="NaN">1-sigma horizontal uncertainty of the impact point in the local frame (geo-referenced aim).</field>
+      <field type="float" name="impact_relative_sigma_m" units="m" invalid="NaN">1-sigma horizontal uncertainty of the impact point relative to the vehicle (visual aim).</field>
+      <field type="float" name="impact_angle_sigma_deg" units="deg" invalid="NaN">1-sigma uncertainty of the current impact direction, including attitude.</field>
+      <field type="uint8_t" name="air_source">Air-data source: 0 none, 1 airspeed sensor, 2 ground velocity minus EKF2 wind, 3 ground minus sideslip wind, 4 thrust based, 5 ground speed with zero wind assumed.</field>
+      <field type="float" name="airspeed_m_s" units="m/s" invalid="NaN">Best available true airspeed.</field>
+      <field type="float" name="wind_speed_m_s" units="m/s" invalid="NaN">Estimated horizontal wind speed.</field>
+      <field type="float" name="wind_sigma_m_s" units="m/s" invalid="NaN">1-sigma horizontal wind uncertainty.</field>
+      <field type="uint8_t" name="quality_flags" display="bitmask">1 ground assumed (not measured), 2 estimator dead reckoning, 4 drag and wind not modeled, 8 wind unknown.</field>
     </message>
     <message id="52601" name="TGTNG_STATUS">
       <description>TGTNG source health, freshness, semantic validity, and readiness.</description>
@@ -33,6 +81,43 @@
       <field type="uint8_t" name="present_flags" display="bitmask">Sources observed at least once.</field>
       <field type="uint8_t" name="fresh_flags" display="bitmask">Sources inside their freshness timeout.</field>
       <field type="uint8_t" name="valid_flags" display="bitmask">Sources passing semantic checks.</field>
+      <extensions/>
+      <field type="uint8_t" name="targeting_mode">Active targeting mode: 0 disabled, 1 impact targeting.</field>
+    </message>
+    <message id="52602" name="STATION_CONTROL_STATUS">
+      <description>Station Control selection, authorization, payload availability, and targeting-mode state.</description>
+      <field type="uint64_t" name="timestamp" units="us">PX4 monotonic publication time.</field>
+      <field type="uint32_t" name="last_command">Most recently processed Station Control command.</field>
+      <field type="uint16_t" name="configured_mask" display="bitmask">Stations with a supported configured mechanism.</field>
+      <field type="uint16_t" name="loaded_mask" display="bitmask">Stations marked loaded in this boot.</field>
+      <field type="uint16_t" name="available_mask" display="bitmask">Configured, loaded, and unreleased stations.</field>
+      <field type="uint16_t" name="released_mask" display="bitmask">Stations commanded to release.</field>
+      <field type="uint16_t" name="active_mask" display="bitmask">Stations whose release output is currently active.</field>
+      <field type="uint8_t" name="selected_station">Selected station ID; zero means none.</field>
+      <field type="uint8_t" name="release_arming_state" enum="STATION_CONTROL_ARMING_STATE">System-wide release authorization.</field>
+      <field type="uint8_t" name="vehicle_armed">One when PX4 reports the vehicle armed.</field>
+      <field type="uint8_t" name="requested_targeting_mode">Targeting mode required by the selected station; 255 means no mode is configured.</field>
+      <field type="uint8_t" name="active_targeting_mode">Targeting mode reported active by TGTNG.</field>
+      <field type="uint8_t" name="targeting_mode_result">Mode synchronization result.</field>
+      <field type="uint8_t" name="last_result">MAV_RESULT-compatible result of the last Station Control command.</field>
+      <extensions/>
+      <field type="uint8_t" name="auto_release_enabled">One when one-shot automatic station release is enabled.</field>
+    </message>
+    <message id="52603" name="FW_GROUND_TRACK_STATUS">
+      <description>Ground target and state of the fixed-wing lateral inverse-aim override. The TGTNG predictor is vacuum point-mass and omits drag and wind.</description>
+      <field type="uint64_t" name="timestamp" units="us">PX4 monotonic publication time.</field>
+      <field type="uint8_t" name="requested">One when ground-track mode is requested.</field>
+      <field type="uint8_t" name="active">One only while the fixed-wing mode manager applies the lateral override.</field>
+      <field type="uint8_t" name="reason">0 disabled, 1 active, 2 not fixed wing, 3 not AUTO mission, 4 not a position waypoint, 5 transition or failsafe, 6 stale or invalid.</field>
+      <field type="double" name="target_lat" units="deg">Target latitude.</field>
+      <field type="double" name="target_lon" units="deg">Target longitude.</field>
+      <field type="float" name="target_alt_amsl_m" units="m">Target elevation AMSL used as the impact surface when mode is active.</field>
+      <field type="float" name="bearing_deg" units="deg">Latched ground-track bearing, clockwise from north.</field>
+      <field type="double" name="line_point_lat" units="deg">A point on the applied inverse-aim ground line.</field>
+      <field type="double" name="line_point_lon" units="deg">A point on the applied inverse-aim ground line.</field>
+      <field type="double" name="predicted_impact_lat" units="deg">Current predicted impact latitude.</field>
+      <field type="double" name="predicted_impact_lon" units="deg">Current predicted impact longitude.</field>
+      <field type="float" name="predicted_miss_m" units="m">Current predictor's horizontal miss distance.</field>
     </message>
   </messages>
 </mavlink>
