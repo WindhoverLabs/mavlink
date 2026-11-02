@@ -51,6 +51,21 @@
       <entry value="512" name="STATION_CONTROL_AUTO_RELEASE_INHIBIT_SOLUTION_STALE"><description>solution stale.</description></entry>
       <entry value="1024" name="STATION_CONTROL_AUTO_RELEASE_INHIBIT_FAILSAFE"><description>failsafe.</description></entry>
     </enum>
+    <enum name="STATION_CONTROL_GUIDANCE_OUTCOME">
+      <description>How a ground-track guidance run ended.</description>
+      <entry value="0" name="STATION_CONTROL_GUIDANCE_OUTCOME_NONE"><description>Still running, or none started.</description></entry>
+      <entry value="1" name="STATION_CONTROL_GUIDANCE_OUTCOME_RELEASED"><description>The station released while guided.</description></entry>
+      <entry value="2" name="STATION_CONTROL_GUIDANCE_OUTCOME_MISSED_PASS"><description>The impact point crossed the target without a release.</description></entry>
+      <entry value="3" name="STATION_CONTROL_GUIDANCE_OUTCOME_PAST_TARGET"><description>The impact point is far beyond the target and never crossed it.</description></entry>
+      <entry value="4" name="STATION_CONTROL_GUIDANCE_OUTCOME_TIMEOUT"><description>The run exceeded STC_GT_TMO.</description></entry>
+      <entry value="5" name="STATION_CONTROL_GUIDANCE_OUTCOME_SOLUTION_LOST"><description>No valid impact solution for too long.</description></entry>
+    </enum>
+    <enum name="STATION_CONTROL_ARM_SOURCE">
+      <description>What armed the payload release.</description>
+      <entry value="0" name="STATION_CONTROL_ARM_SOURCE_NONE"><description>The release is SAFE.</description></entry>
+      <entry value="1" name="STATION_CONTROL_ARM_SOURCE_RC"><description>Armed with the RC release-arm switch ON.</description></entry>
+      <entry value="2" name="STATION_CONTROL_ARM_SOURCE_COMMAND"><description>Armed by a command alone: the RC switch was OFF or not mapped.</description></entry>
+    </enum>
   </enums>
   <messages>
     <message id="52600" name="TGTNG_IMPACT">
@@ -80,7 +95,9 @@
       <field type="float" name="airspeed_m_s" units="m/s" invalid="NaN">Best available true airspeed.</field>
       <field type="float" name="wind_speed_m_s" units="m/s" invalid="NaN">Estimated horizontal wind speed.</field>
       <field type="float" name="wind_sigma_m_s" units="m/s" invalid="NaN">1-sigma horizontal wind uncertainty.</field>
-      <field type="uint8_t" name="quality_flags" display="bitmask">1 ground assumed (not measured), 2 estimator dead reckoning, 4 drag and wind not modeled, 8 wind unknown.</field>
+      <field type="uint8_t" name="quality_flags" display="bitmask">1 ground assumed (not measured), 2 estimator dead reckoning, 4 drag and wind not modeled, 8 wind unknown, 16 selected drag model has no mass or area (vacuum used).</field>
+      <field type="uint8_t" name="drag_model">Payload drag model of the current solution: 0 vacuum (also when the selected model was invalid), 1 to 4 TGTNG_DMn_MASS and TGTNG_DMn_CDA.</field>
+      <field type="float" name="release_delay_s" units="s">Release delay applied to the current solution: the selected station's STC_Sx_DELAY.</field>
     </message>
     <message id="52601" name="TGTNG_STATUS">
       <description>TGTNG source health, freshness, semantic validity, and readiness.</description>
@@ -120,6 +137,9 @@
       <field type="uint8_t" name="auto_release_ready">One when enabled and every release prerequisite is satisfied.</field>
       <field type="uint32_t" name="auto_release_inhibit_flags" enum="STATION_CONTROL_AUTO_RELEASE_INHIBIT" display="bitmask">Reasons preventing automatic release, independently of enablement.</field>
       <field type="uint8_t" name="status_version">Two for group selection and readiness reporting; zero on older firmware.</field>
+      <field type="uint8_t" name="guidance_outcome" enum="STATION_CONTROL_GUIDANCE_OUTCOME">How the last ground-track guidance run ended; zero while it runs or before one started.</field>
+      <field type="float" name="guidance_outcome_miss_m" units="m" invalid="NaN">Horizontal impact-to-target miss when the run ended, NaN if unknown.</field>
+      <field type="uint8_t" name="release_arm_source" enum="STATION_CONTROL_ARM_SOURCE">What armed the release (STC_ARM_SRC): none while SAFE, the RC switch, or a command alone.</field>
     </message>
     <message id="52603" name="FW_GROUND_TRACK_STATUS">
       <description>Ground target and state of the fixed-wing lateral inverse-aim override. The TGTNG predictor is vacuum point-mass and omits drag and wind.</description>
