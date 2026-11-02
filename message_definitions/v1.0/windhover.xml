@@ -22,7 +22,7 @@
         <param index="1" label="Enable Auto Release">Zero disables; one enables.</param>
       </entry>
       <entry value="31018" name="MAV_CMD_WINDHOVER_SET_GROUND_TARGET" hasLocation="true" isDestination="true">
-        <description>Set the ground target used by TGTNG's inverse-aim guidance. Send in COMMAND_INT using MAV_FRAME_GLOBAL; param7 is target elevation AMSL.</description>
+        <description>Set the ground target used by TGTNG's inverse-aim guidance. Send in COMMAND_INT using MAV_FRAME_GLOBAL; param7 is target elevation AMSL. As a mission item a relative-to-home frame also works: the navigator adds the home altitude before handing the target over.</description>
         <param index="5" label="Latitude">Target latitude in degrees.</param>
         <param index="6" label="Longitude">Target longitude in degrees.</param>
         <param index="7" label="Elevation">Target elevation above mean sea level in metres.</param>
