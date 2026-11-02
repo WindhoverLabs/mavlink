@@ -119,5 +119,21 @@
       <field type="double" name="predicted_impact_lon" units="deg">Current predicted impact longitude.</field>
       <field type="float" name="predicted_miss_m" units="m">Current predictor's horizontal miss distance.</field>
     </message>
+    <message id="52604" name="GROUND_TRACK_STATUS">
+      <description>Applied ground-track override state and target solution for any supported vehicle.</description>
+      <field type="uint64_t" name="timestamp" units="us">PX4 monotonic publication time.</field>
+      <field type="uint8_t" name="requested">One when ground-track mode is requested.</field>
+      <field type="uint8_t" name="active">One only while a flight controller applies the ground-track override.</field>
+      <field type="uint8_t" name="reason">0 disabled, 1 active, 2 unsupported vehicle, 3 not AUTO mission, 4 not a position waypoint, 5 transition or failsafe, 6 stale or invalid.</field>
+      <field type="double" name="target_lat" units="deg">Target latitude.</field>
+      <field type="double" name="target_lon" units="deg">Target longitude.</field>
+      <field type="float" name="target_alt_amsl_m" units="m">Target elevation AMSL used as the impact surface when mode is active.</field>
+      <field type="float" name="bearing_deg" units="deg">Latched ground-track bearing, clockwise from north.</field>
+      <field type="double" name="line_point_lat" units="deg">A point on the applied inverse-aim ground line.</field>
+      <field type="double" name="line_point_lon" units="deg">A point on the applied inverse-aim ground line.</field>
+      <field type="double" name="predicted_impact_lat" units="deg">Current predicted impact latitude.</field>
+      <field type="double" name="predicted_impact_lon" units="deg">Current predicted impact longitude.</field>
+      <field type="float" name="predicted_miss_m" units="m">Current predictor's horizontal miss distance.</field>
+    </message>
   </messages>
 </mavlink>
