@@ -33,6 +33,14 @@
         <param index="2" label="Bearing">Optional approach bearing clockwise from north in degrees.</param>
         <param index="3" label="Bearing explicit">1 uses param2; otherwise derive bearing from aircraft to target on activation.</param>
       </entry>
+      <entry value="31021" name="MAV_CMD_WINDHOVER_CAMERA_LOCATE_PIXEL" hasLocation="false" isDestination="false">
+        <description>Ask a camera component for the ground point under a point of its video, as the operator saw it. Send in COMMAND_LONG to the camera. The camera answers with COMMAND_ACK; result_param2 is a WINDHOVER_LOCATE_PIXEL_REASON. On MAV_RESULT_ACCEPTED it then sends CAMERA_TRACKING_GEO_STATUS with the ground point (alt is the elevation of the plane it used). A repeat with the same request id and an elevation reuses that request's line of sight.</description>
+        <param index="1" label="X" minValue="0" maxValue="1">Horizontal position in the displayed video, 0 left to 1 right, letterbox removed.</param>
+        <param index="2" label="Y" minValue="0" maxValue="1">Vertical position, 0 top to 1 bottom.</param>
+        <param index="3" label="Elevation" units="m">Ground elevation AMSL to intersect. NaN: the current ground target's elevation, else home.</param>
+        <param index="4" label="Request ID" minValue="0" increment="1">Chosen by the requester; integers up to 2^24.</param>
+        <param index="5" label="Frame stamp">Reserved for a stamp naming the clicked frame. 0: not sent.</param>
+      </entry>
     </enum>
     <enum name="STATION_CONTROL_ARMING_STATE">
       <entry value="0" name="STATION_CONTROL_ARMING_STATE_SAFE"><description>Payload release is safe.</description></entry>
@@ -65,6 +73,20 @@
       <entry value="0" name="STATION_CONTROL_ARM_SOURCE_NONE"><description>The release is SAFE.</description></entry>
       <entry value="1" name="STATION_CONTROL_ARM_SOURCE_RC"><description>Armed with the RC release-arm switch ON.</description></entry>
       <entry value="2" name="STATION_CONTROL_ARM_SOURCE_COMMAND"><description>Armed by a command alone: the RC switch was OFF or not mapped.</description></entry>
+    </enum>
+    <enum name="WINDHOVER_LOCATE_PIXEL_REASON">
+      <description>Why MAV_CMD_WINDHOVER_CAMERA_LOCATE_PIXEL found no ground point (COMMAND_ACK result_param2).</description>
+      <entry value="0" name="WINDHOVER_LOCATE_PIXEL_REASON_NONE"><description>Located, or no reason given.</description></entry>
+      <entry value="1" name="WINDHOVER_LOCATE_PIXEL_REASON_NO_CAMERA_MODEL"><description>The camera has no valid model or frame size.</description></entry>
+      <entry value="2" name="WINDHOVER_LOCATE_PIXEL_REASON_NO_POSE"><description>No vehicle attitude or global position for the frame.</description></entry>
+      <entry value="3" name="WINDHOVER_LOCATE_PIXEL_REASON_STALE_POSE"><description>The vehicle pose nearest the frame is too old.</description></entry>
+      <entry value="4" name="WINDHOVER_LOCATE_PIXEL_REASON_OUTSIDE_IMAGE"><description>The point is outside the image.</description></entry>
+      <entry value="5" name="WINDHOVER_LOCATE_PIXEL_REASON_ABOVE_HORIZON"><description>The line of sight does not point down.</description></entry>
+      <entry value="6" name="WINDHOVER_LOCATE_PIXEL_REASON_TOO_SHALLOW"><description>The line of sight is below the minimum depression angle.</description></entry>
+      <entry value="7" name="WINDHOVER_LOCATE_PIXEL_REASON_TOO_FAR"><description>The ground point is beyond the maximum range.</description></entry>
+      <entry value="8" name="WINDHOVER_LOCATE_PIXEL_REASON_BELOW_SURFACE"><description>The camera is at or below the ground elevation.</description></entry>
+      <entry value="9" name="WINDHOVER_LOCATE_PIXEL_REASON_NO_ELEVATION"><description>No elevation given and no target or home elevation known.</description></entry>
+      <entry value="10" name="WINDHOVER_LOCATE_PIXEL_REASON_UNKNOWN_REQUEST"><description>An elevation was given for a request id the camera no longer holds.</description></entry>
     </enum>
   </enums>
   <messages>
